@@ -1,6 +1,6 @@
 # waf-defense-rulepacks
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![License: CC%20BY%204.0](https://img.shields.io/badge/License-CC%20BY%204.0-yellow.svg)](LICENSE)
 [![Status: Active Development](https://img.shields.io/badge/Status-Active%20Development-blue.svg)]()
 [![Vendors: 7](https://img.shields.io/badge/Vendors-7-green.svg)]()
 [![Packs: Growing](https://img.shields.io/badge/Packs-Growing-orange.svg)]()
@@ -94,7 +94,22 @@ waf-defense-rulepacks/
 └── training/             # Tutorials and labs
 ```
 
-### 2. Pick a pack and review it
+### 2. Create an isolated environment and install the toolkit
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -e '.[dev]'
+```
+
+If you are working in a restricted or offline environment that already has the
+runtime dependencies available, install without build isolation:
+
+```bash
+python -m pip install --no-build-isolation --no-deps -e .
+```
+
+### 3. Pick a pack and review it
 
 ```bash
 cat cloudflare/waf-rules/block_sqli.json
@@ -102,15 +117,35 @@ cat cloudflare/waf-rules/block_sqli.json
 
 Review the `potential_side_effects` and `tuning_notes` fields. Understand what the rule does before deploying it.
 
-### 3. Deploy in log mode first
+### 4. Deploy in log mode first
 
 Every pack includes a `deployment_notes` field recommending a log-only period (typically 72 hours) before switching to block mode. This is strongly recommended.
 
-### 4. Validate packs
+### 5. Validate packs
 
 ```bash
-pip install jsonschema
 python shared/validators/validate_pack.py --all
+pytest -q
+```
+
+### 6. Evaluate higher-risk request patterns locally
+
+The repository also ships Python-based defensive analyzers for classes that are
+hard to express cleanly in vendor JSON alone. For example, the host header pack
+detects routing override and poisoning attempts before deployment:
+
+```bash
+python - <<'PY'
+from shared.rulepacks.host_header_attack_pack import HostHeaderAttackPack, HostHeaderRequest
+
+result = HostHeaderAttackPack().evaluate(
+    HostHeaderRequest(
+        url="https://app.example.com/login",
+        headers={"Host": "localhost", "X-Forwarded-Host": "evil.example.net"},
+    )
+)
+print(result.summary())
+PY
 ```
 
 ---
@@ -157,6 +192,14 @@ python shared/validators/validate_pack.py --pack cloudflare/waf-rules/block_sqli
 # Validate all packs
 python shared/validators/validate_pack.py --all
 ```
+
+The host header attack detector is available at [`shared/rulepacks/host_header_attack_pack.py`](shared/rulepacks/host_header_attack_pack.py) and covers:
+
+- conflicting host-routing headers across proxies and origin layers
+- absolute-URL host values and invalid path-bearing host headers
+- internal, loopback, and cloud metadata targets
+- external-domain mismatches between `Host` and forwarding headers
+- IP-literal overrides against canonical domain-based routing
 
 ---
 
