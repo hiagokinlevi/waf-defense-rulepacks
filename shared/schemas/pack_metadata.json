@@ -1,0 +1,140 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/hiagokinlevi/waf-defense-rulepacks/shared/schemas/pack_metadata.json",
+  "title": "k1N WAF Pack Metadata Schema",
+  "description": "JSON Schema for validating waf-defense-rulepacks pack JSON files. All required fields must be present and valid.",
+  "type": "object",
+  "required": [
+    "name",
+    "vendor",
+    "category",
+    "objective",
+    "risk_mitigated",
+    "severity",
+    "mode",
+    "version",
+    "maturity"
+  ],
+  "properties": {
+    "name": {
+      "type": "string",
+      "minLength": 5,
+      "maxLength": 120,
+      "description": "Human-readable name for the WAF rule pack"
+    },
+    "vendor": {
+      "type": "string",
+      "enum": ["cloudflare", "aws-waf", "azure-waf", "f5", "fortiweb", "imperva", "checkpoint", "modsecurity", "nginx", "generic"],
+      "description": "Target WAF vendor or platform"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "sqli_protection",
+        "xss_protection",
+        "access_control",
+        "rate_limiting",
+        "bot_protection",
+        "security_headers",
+        "authentication_protection",
+        "csrf_protection",
+        "lfi_rfi_protection",
+        "ssrf_protection",
+        "command_injection",
+        "path_traversal",
+        "virtual_patch",
+        "api_protection",
+        "dos_protection"
+      ],
+      "description": "Security category this pack addresses"
+    },
+    "app_context": {
+      "type": "string",
+      "enum": ["generic", "saas", "api", "e-commerce", "cms", "admin_panel", "microservices", "mobile_backend"],
+      "description": "Application context this pack is designed for"
+    },
+    "objective": {
+      "type": "string",
+      "minLength": 20,
+      "description": "Clear description of what this rule pack does"
+    },
+    "risk_mitigated": {
+      "type": "string",
+      "minLength": 10,
+      "description": "The specific attack or risk this pack mitigates"
+    },
+    "severity": {
+      "type": "string",
+      "enum": ["critical", "high", "medium", "low", "informational"],
+      "description": "Severity of the risk being mitigated"
+    },
+    "mode": {
+      "type": "string",
+      "enum": ["block", "log", "challenge", "count", "js_challenge", "managed_challenge"],
+      "description": "Recommended enforcement mode for production use"
+    },
+    "recommended_for": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "List of application types this pack is recommended for"
+    },
+    "potential_side_effects": {
+      "type": "string",
+      "description": "Known false positive scenarios or side effects of deploying this pack"
+    },
+    "tuning_notes": {
+      "type": "string",
+      "description": "Guidance for tuning the rule to reduce false positives"
+    },
+    "deployment_notes": {
+      "type": "string",
+      "description": "Pre-production deployment recommendations"
+    },
+    "monitoring_notes": {
+      "type": "string",
+      "description": "What to monitor after deployment"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$",
+      "description": "Semantic version of this pack (e.g., 1.0.0)"
+    },
+    "maturity": {
+      "type": "string",
+      "enum": ["draft", "reviewed", "tested", "operational", "mature"],
+      "description": "Maturity level of this pack: draft=initial, reviewed=peer-reviewed, tested=tested in staging, operational=used in production, mature=battle-tested with documented tuning"
+    },
+    "references": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "format": "uri"
+      },
+      "description": "Links to relevant standards, advisories, or documentation"
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Searchable tags for this pack"
+    }
+  },
+  "additionalProperties": true,
+  "examples": [
+    {
+      "name": "Block SQL Injection Attempts",
+      "vendor": "cloudflare",
+      "category": "sqli_protection",
+      "app_context": "generic",
+      "objective": "Detect and block common SQL injection patterns",
+      "risk_mitigated": "SQL injection leading to data exfiltration",
+      "severity": "critical",
+      "mode": "block",
+      "version": "1.0.0",
+      "maturity": "reviewed"
+    }
+  ]
+}

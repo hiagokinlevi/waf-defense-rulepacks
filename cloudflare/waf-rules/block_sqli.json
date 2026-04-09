@@ -1,0 +1,25 @@
+{
+  "name": "Block SQL Injection Attempts",
+  "vendor": "cloudflare",
+  "category": "sqli_protection",
+  "app_context": "generic",
+  "objective": "Detect and block common SQL injection patterns in query strings, path segments, and request bodies",
+  "risk_mitigated": "SQL injection leading to data exfiltration, authentication bypass, or database manipulation",
+  "severity": "critical",
+  "mode": "block",
+  "recommended_for": ["web_apps", "apis", "admin_panels"],
+  "potential_side_effects": "May produce false positives on applications that accept SQL-like syntax in legitimate inputs (e.g., search boxes with boolean terms, data analytics UIs). Test in log-only mode first.",
+  "tuning_notes": "Add path-based exclusions for known-safe endpoints (e.g., /api/search). Lower confidence by removing the broader 'OR' pattern if false positives persist. Consider adding ip.src exclusions for internal monitoring tools.",
+  "deployment_notes": "Deploy in 'log' mode for a minimum of 72 hours before switching to 'block'. Review logs for false positives. Coordinate with application teams on search and filter endpoints.",
+  "monitoring_notes": "Monitor block rate after deployment. A sudden spike in blocks may indicate active scanning or a new false positive. Set up a Cloudflare notification for firewall event spikes.",
+  "version": "1.0.0",
+  "maturity": "reviewed",
+  "references": [
+    "https://owasp.org/www-project-top-ten/2021/A03_2021-Injection",
+    "https://portswigger.net/web-security/sql-injection"
+  ],
+  "cloudflare_expression": "(http.request.uri.query contains \"' OR\" or http.request.uri.query contains \"1=1\" or http.request.uri.query contains \"UNION SELECT\" or http.request.uri.query contains \"--\" or http.request.uri.query contains \"/*\" or http.request.body contains \"' OR\" or http.request.body contains \"UNION SELECT\" or http.request.body contains \"INSERT INTO\" or http.request.body contains \"DROP TABLE\")",
+  "action": "block",
+  "log_only_expression": "(http.request.uri.query contains \"' OR\" or http.request.uri.query contains \"UNION SELECT\" or http.request.body contains \"UNION SELECT\")",
+  "tags": ["sqli", "injection", "owasp-a03", "critical"]
+}

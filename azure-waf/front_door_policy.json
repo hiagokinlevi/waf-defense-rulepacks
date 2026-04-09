@@ -1,0 +1,120 @@
+{
+  "_k1n_metadata": {
+    "name": "Azure Front Door WAF Policy — Baseline",
+    "vendor": "azure-waf",
+    "target": "Azure Front Door (Standard/Premium)",
+    "version": "1.0.0",
+    "maturity": "reviewed",
+    "objective": "Deploy a baseline WAF policy to Azure Front Door with OWASP Core Rule Set 3.2, custom rules for rate limiting and admin protection, and bot management",
+    "deployment_notes": "Deploy in Detection mode first. Review Azure Monitor WAF logs for 72 hours before switching to Prevention mode. Use the Azure CLI commands in docs/deployment-guides/azure-waf.md.",
+    "monitoring_notes": "Enable Azure Monitor diagnostic settings on the WAF policy. Create Log Analytics alerts for blocked request spikes. Recommended: alert if BlockedRequests > 100 in 5 minutes.",
+    "references": [
+      "https://learn.microsoft.com/en-us/azure/web-application-firewall/afds/afds-overview",
+      "https://learn.microsoft.com/en-us/azure/web-application-firewall/ag/application-gateway-crs-rulegroups-rules"
+    ]
+  },
+  "type": "Microsoft.Network/FrontDoorWebApplicationFirewallPolicies",
+  "apiVersion": "2022-05-01",
+  "name": "k1nBaselineFrontDoorWAF",
+  "location": "global",
+  "sku": {
+    "name": "Premium_AzureFrontDoor",
+    "comment": "WAF with managed rules requires Premium SKU"
+  },
+  "properties": {
+    "policySettings": {
+      "enabledState": "Enabled",
+      "mode": "Detection",
+      "comment": "Start in Detection mode. Switch to Prevention after validating no false positives.",
+      "redirectUrl": null,
+      "customBlockResponseStatusCode": 403,
+      "customBlockResponseBody": "eyJlcnJvciI6ICJSZXF1ZXN0IGJsb2NrZWQgYnkgV0FGIHBvbGljeSJ9",
+      "requestBodyCheck": "Enabled"
+    },
+    "customRules": {
+      "rules": [
+        {
+          "name": "k1nAdminRestriction",
+          "priority": 100,
+          "enabledState": "Enabled",
+          "ruleType": "MatchRule",
+          "action": "Block",
+          "matchConditions": [
+            {
+              "matchVariable": "RequestUri",
+              "operator": "BeginsWith",
+              "negateCondition": false,
+              "matchValue": ["/admin", "/wp-admin", "/phpmyadmin"],
+              "transforms": ["Lowercase"]
+            },
+            {
+              "matchVariable": "RemoteAddr",
+              "operator": "IPMatch",
+              "negateCondition": true,
+              "matchValue": ["10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16"],
+              "comment": "Replace with your actual allowlisted IP ranges"
+            }
+          ]
+        },
+        {
+          "name": "k1nLoginRateLimit",
+          "priority": 200,
+          "enabledState": "Enabled",
+          "ruleType": "RateLimitRule",
+          "rateLimitDurationInMinutes": 1,
+          "rateLimitThreshold": 5,
+          "action": "Block",
+          "matchConditions": [
+            {
+              "matchVariable": "RequestUri",
+              "operator": "Contains",
+              "negateCondition": false,
+              "matchValue": ["/login", "/signin"],
+              "transforms": ["Lowercase"]
+            },
+            {
+              "matchVariable": "RequestMethod",
+              "operator": "Equal",
+              "negateCondition": false,
+              "matchValue": ["POST"]
+            }
+          ]
+        }
+      ]
+    },
+    "managedRules": {
+      "managedRuleSets": [
+        {
+          "ruleSetType": "Microsoft_DefaultRuleSet",
+          "ruleSetVersion": "2.1",
+          "ruleSetAction": "Block",
+          "exclusions": [],
+          "ruleGroupOverrides": [
+            {
+              "ruleGroupName": "SQLI",
+              "rules": [],
+              "comment": "SQLi rules — no overrides. Validate all rules before enabling Prevention mode."
+            },
+            {
+              "ruleGroupName": "XSS",
+              "rules": [
+                {
+                  "ruleId": "942100",
+                  "enabledState": "Enabled",
+                  "action": "Log",
+                  "comment": "XSS via libinjection — set to Log initially; switch to Block after validation"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "ruleSetType": "Microsoft_BotManagerRuleSet",
+          "ruleSetVersion": "1.0",
+          "ruleGroupOverrides": [],
+          "comment": "Bot management rule set — requires Front Door Premium SKU"
+        }
+      ]
+    }
+  }
+}

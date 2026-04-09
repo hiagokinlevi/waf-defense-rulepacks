@@ -1,0 +1,25 @@
+{
+  "name": "Block Path Traversal and LFI Attempts",
+  "vendor": "cloudflare",
+  "category": "path_traversal",
+  "app_context": "generic",
+  "objective": "Detect and block directory traversal and local file inclusion patterns in URI paths and query strings to prevent unauthorized access to filesystem resources",
+  "risk_mitigated": "Local File Inclusion (LFI) allowing attackers to read arbitrary files from the server filesystem (e.g., /etc/passwd, application configs with secrets, private keys)",
+  "severity": "high",
+  "mode": "block",
+  "recommended_for": ["web_apps", "apis", "file_serving_apps"],
+  "potential_side_effects": "May block legitimate requests that include '../' in documentation paths or file browser applications. URLs like '/docs/../overview' that are structurally normalized before reaching the WAF may not be caught.",
+  "tuning_notes": "Add path exclusions for legitimate file-serving endpoints. Consider switching to 'log' mode for 48 hours on applications that may use relative path syntax in APIs.",
+  "deployment_notes": "Deploy in 'log' mode first. Review logs for false positives against any CMS or file browser endpoints. The encoded-dot check ('%2e%2e') is important for evasion resistance.",
+  "monitoring_notes": "Path traversal attempts often come in bursts from automated scanners. Set up an alert for more than 20 blocks per IP within 5 minutes.",
+  "version": "1.0.0",
+  "maturity": "reviewed",
+  "references": [
+    "https://owasp.org/www-community/attacks/Path_Traversal",
+    "https://cwe.mitre.org/data/definitions/22.html"
+  ],
+  "cloudflare_expression": "(http.request.uri.path contains \"../\" or http.request.uri.path contains \"..\\\\\" or http.request.uri.path contains \"%2e%2e%2f\" or http.request.uri.path contains \"%2e%2e/\" or http.request.uri.path contains \"..%2f\" or http.request.uri.query contains \"../\" or http.request.uri.query contains \"%2e%2e\" or http.request.uri.query contains \"/etc/passwd\" or http.request.uri.query contains \"/etc/shadow\" or http.request.uri.query contains \"C:\\\\Windows\" or http.request.uri.query contains \"file://\")",
+  "action": "block",
+  "log_only_expression": "(http.request.uri.path contains \"../\" or http.request.uri.query contains \"../\")",
+  "tags": ["path-traversal", "lfi", "file-inclusion", "owasp-a01", "cwe-22"]
+}

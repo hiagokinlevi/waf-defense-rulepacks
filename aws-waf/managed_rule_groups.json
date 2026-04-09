@@ -1,0 +1,141 @@
+{
+  "Name": "k1n-baseline-web-acl",
+  "Scope": "REGIONAL",
+  "Description": "k1N baseline WebACL using AWS managed rule groups — review and tune before production use",
+  "DefaultAction": {
+    "Allow": {}
+  },
+  "VisibilityConfig": {
+    "SampledRequestsEnabled": true,
+    "CloudWatchMetricsEnabled": true,
+    "MetricName": "k1nBaselineWebACL"
+  },
+  "Rules": [
+    {
+      "Name": "AWSManagedRulesCommonRuleSet",
+      "Priority": 10,
+      "Statement": {
+        "ManagedRuleGroupStatement": {
+          "VendorName": "AWS",
+          "Name": "AWSManagedRulesCommonRuleSet",
+          "ExcludedRules": [
+            {
+              "Name": "SizeRestrictions_BODY",
+              "Comment": "Excluded to avoid blocking large file uploads — re-enable if not accepting large payloads"
+            },
+            {
+              "Name": "GenericLFI_BODY",
+              "Comment": "May cause false positives on apps with file path inputs — validate before enabling"
+            }
+          ]
+        }
+      },
+      "OverrideAction": {
+        "None": {},
+        "Comment": "Use None to enforce the managed rule group actions. Switch to Count to log-only."
+      },
+      "VisibilityConfig": {
+        "SampledRequestsEnabled": true,
+        "CloudWatchMetricsEnabled": true,
+        "MetricName": "AWSManagedRulesCommonRuleSet"
+      }
+    },
+    {
+      "Name": "AWSManagedRulesSQLiRuleSet",
+      "Priority": 20,
+      "Statement": {
+        "ManagedRuleGroupStatement": {
+          "VendorName": "AWS",
+          "Name": "AWSManagedRulesSQLiRuleSet",
+          "ExcludedRules": []
+        }
+      },
+      "OverrideAction": {
+        "None": {},
+        "Comment": "SQLi rule set — no exclusions by default, validate with your application"
+      },
+      "VisibilityConfig": {
+        "SampledRequestsEnabled": true,
+        "CloudWatchMetricsEnabled": true,
+        "MetricName": "AWSManagedRulesSQLiRuleSet"
+      }
+    },
+    {
+      "Name": "AWSManagedRulesKnownBadInputsRuleSet",
+      "Priority": 30,
+      "Statement": {
+        "ManagedRuleGroupStatement": {
+          "VendorName": "AWS",
+          "Name": "AWSManagedRulesKnownBadInputsRuleSet",
+          "ExcludedRules": []
+        }
+      },
+      "OverrideAction": {
+        "None": {},
+        "Comment": "Blocks known bad inputs including Log4Shell patterns and SSRF probes"
+      },
+      "VisibilityConfig": {
+        "SampledRequestsEnabled": true,
+        "CloudWatchMetricsEnabled": true,
+        "MetricName": "AWSManagedRulesKnownBadInputsRuleSet"
+      }
+    },
+    {
+      "Name": "AWSManagedRulesAmazonIpReputationList",
+      "Priority": 40,
+      "Statement": {
+        "ManagedRuleGroupStatement": {
+          "VendorName": "AWS",
+          "Name": "AWSManagedRulesAmazonIpReputationList",
+          "ExcludedRules": []
+        }
+      },
+      "OverrideAction": {
+        "None": {},
+        "Comment": "Blocks IPs on AWS threat intelligence lists — low false positive risk"
+      },
+      "VisibilityConfig": {
+        "SampledRequestsEnabled": true,
+        "CloudWatchMetricsEnabled": true,
+        "MetricName": "AWSManagedRulesAmazonIpReputationList"
+      }
+    },
+    {
+      "Name": "AWSManagedRulesAnonymousIpList",
+      "Priority": 50,
+      "Statement": {
+        "ManagedRuleGroupStatement": {
+          "VendorName": "AWS",
+          "Name": "AWSManagedRulesAnonymousIpList",
+          "ExcludedRules": [
+            {
+              "Name": "HostingProviderIPList",
+              "Comment": "Excluded — many legitimate SaaS clients and CI/CD agents run in cloud hosting providers"
+            }
+          ]
+        }
+      },
+      "OverrideAction": {
+        "None": {},
+        "Comment": "Blocks Tor exit nodes and known anonymizing proxies. HostingProviderIPList excluded by default."
+      },
+      "VisibilityConfig": {
+        "SampledRequestsEnabled": true,
+        "CloudWatchMetricsEnabled": true,
+        "MetricName": "AWSManagedRulesAnonymousIpList"
+      }
+    }
+  ],
+  "_k1n_metadata": {
+    "vendor": "aws-waf",
+    "version": "1.0.0",
+    "maturity": "reviewed",
+    "deployment_notes": "Deploy all rules in Count (override) mode first. Review CloudWatch metrics for AWSWAFv2 blocked requests. Switch to None (enforce) after validating false positive rate.",
+    "monitoring_notes": "Enable AWS WAF logging to S3 or CloudWatch Logs. Set up CloudWatch alarms on AllowedRequests and BlockedRequests metrics. A spike in blocked requests may indicate active scanning.",
+    "tuning_notes": "Review excluded rules after initial deployment. Re-enable excluded rules one at a time to validate false positive impact.",
+    "references": [
+      "https://docs.aws.amazon.com/waf/latest/developerguide/waf-managed-rule-groups.html",
+      "https://docs.aws.amazon.com/waf/latest/developerguide/getting-started.html"
+    ]
+  }
+}

@@ -1,0 +1,70 @@
+{
+  "name": "Security Headers Baseline (Cloudflare Transform Rule)",
+  "vendor": "cloudflare",
+  "category": "security_headers",
+  "app_context": "generic",
+  "objective": "Enforce a security header baseline on all responses via a Cloudflare HTTP Response Header Modification Transform Rule. Adds HSTS, X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy, and Content-Security-Policy (report-only mode by default).",
+  "risk_mitigated": "Clickjacking, MIME-type sniffing attacks, protocol downgrade attacks, excessive referrer leakage, overly permissive browser features",
+  "severity": "medium",
+  "mode": "log",
+  "recommended_for": ["web_apps", "saas", "e-commerce", "marketing_sites"],
+  "potential_side_effects": "HSTS max-age locks the domain to HTTPS. Do not enable includeSubDomains unless ALL subdomains serve HTTPS. The CSP header is set to report-only by default — switching to enforced mode may break apps that load third-party scripts. X-Frame-Options: DENY will break any legitimate iframeing of your content.",
+  "tuning_notes": "Update the Content-Security-Policy to match your actual allowed origins. Remove X-Frame-Options if your application legitimately embeds content in iframes (use the frame-ancestors CSP directive instead). Adjust Permissions-Policy to only the browser features your app actually uses.",
+  "deployment_notes": "Deploy the CSP in 'Content-Security-Policy-Report-Only' mode first and collect reports for 2-4 weeks before switching to enforced mode. HSTS can be deployed immediately if you are confident all subdomains serve HTTPS.",
+  "monitoring_notes": "Set up a CSP report endpoint (e.g., via report-uri.com or your own endpoint) to collect violations. Review violations weekly to tighten the policy.",
+  "version": "1.0.0",
+  "maturity": "reviewed",
+  "references": [
+    "https://owasp.org/www-project-secure-headers/",
+    "https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Security-Policy",
+    "https://hstspreload.org/"
+  ],
+  "cloudflare_transform_rule": {
+    "description": "Security headers baseline — k1N pack v1.0",
+    "expression": "true",
+    "action": "rewrite",
+    "response_headers": [
+      {
+        "name": "Strict-Transport-Security",
+        "operation": "set",
+        "value": "max-age=63072000; includeSubDomains; preload"
+      },
+      {
+        "name": "X-Frame-Options",
+        "operation": "set",
+        "value": "DENY"
+      },
+      {
+        "name": "X-Content-Type-Options",
+        "operation": "set",
+        "value": "nosniff"
+      },
+      {
+        "name": "Referrer-Policy",
+        "operation": "set",
+        "value": "strict-origin-when-cross-origin"
+      },
+      {
+        "name": "Permissions-Policy",
+        "operation": "set",
+        "value": "camera=(), microphone=(), geolocation=(), payment=(), usb=(), interest-cohort=()"
+      },
+      {
+        "name": "Content-Security-Policy-Report-Only",
+        "operation": "set",
+        "value": "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.example.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self'; connect-src 'self' https://api.example.com; frame-ancestors 'none'; report-uri /csp-report"
+      },
+      {
+        "name": "X-Permitted-Cross-Domain-Policies",
+        "operation": "set",
+        "value": "none"
+      },
+      {
+        "name": "Cross-Origin-Opener-Policy",
+        "operation": "set",
+        "value": "same-origin"
+      }
+    ]
+  },
+  "tags": ["headers", "hsts", "csp", "clickjacking", "medium"]
+}

@@ -1,0 +1,108 @@
+{
+  "_k1n_metadata": {
+    "name": "Azure Application Gateway WAF Policy — Baseline",
+    "vendor": "azure-waf",
+    "target": "Azure Application Gateway WAF v2",
+    "version": "1.0.0",
+    "maturity": "reviewed",
+    "objective": "Deploy a baseline WAF policy to Azure Application Gateway using OWASP CRS 3.2 with detection mode, custom exclusions for common false positive rules, and custom rules for admin path protection",
+    "deployment_notes": "Deploy in Detection mode. Monitor logs for 72 hours before switching to Prevention. Use Azure CLI: az network application-gateway waf-policy create",
+    "monitoring_notes": "Enable diagnostic logs and send to Log Analytics workspace. Create metric alerts on BlockedRequests and MatchedRequests."
+  },
+  "type": "Microsoft.Network/applicationGatewayWebApplicationFirewallPolicies",
+  "apiVersion": "2022-09-01",
+  "name": "k1nAppGatewayWAFPolicy",
+  "location": "[resourceGroup().location]",
+  "properties": {
+    "policySettings": {
+      "state": "Enabled",
+      "mode": "Detection",
+      "comment": "Switch to Prevention mode after validating false positives",
+      "requestBodyCheck": true,
+      "maxRequestBodySizeInKb": 128,
+      "fileUploadLimitInMb": 100
+    },
+    "customRules": [
+      {
+        "name": "k1nBlockAdminPaths",
+        "priority": 10,
+        "ruleType": "MatchRule",
+        "action": "Block",
+        "matchConditions": [
+          {
+            "matchVariables": [
+              {
+                "variableName": "RequestUri"
+              }
+            ],
+            "operator": "BeginsWith",
+            "negateCondition": false,
+            "matchValues": ["/admin", "/wp-admin", "/phpmyadmin", "/cpanel"],
+            "transforms": ["Lowercase"]
+          },
+          {
+            "matchVariables": [
+              {
+                "variableName": "RemoteAddr"
+              }
+            ],
+            "operator": "IPMatch",
+            "negateCondition": true,
+            "matchValues": ["10.0.0.0/8", "192.168.0.0/16"],
+            "comment": "Update with your office/VPN CIDRs before deploying"
+          }
+        ]
+      }
+    ],
+    "managedRules": {
+      "exclusions": [
+        {
+          "matchVariable": "RequestBodyPostArgNames",
+          "selectorMatchOperator": "Equals",
+          "selector": "_token",
+          "comment": "Exclude CSRF token field from inspection — known false positive source"
+        }
+      ],
+      "managedRuleSets": [
+        {
+          "ruleSetType": "OWASP",
+          "ruleSetVersion": "3.2",
+          "ruleGroupOverrides": [
+            {
+              "ruleGroupName": "REQUEST-942-APPLICATION-ATTACK-SQLI",
+              "rules": [
+                {
+                  "ruleId": "942200",
+                  "state": "Enabled",
+                  "action": "Log",
+                  "comment": "MySQL/MariaDB comment detection — set to Log first"
+                },
+                {
+                  "ruleId": "942430",
+                  "state": "Enabled",
+                  "action": "Log",
+                  "comment": "Restricted SQL Character Anomaly Detection — frequent false positive; validate"
+                }
+              ]
+            },
+            {
+              "ruleGroupName": "REQUEST-941-APPLICATION-ATTACK-XSS",
+              "rules": [
+                {
+                  "ruleId": "941100",
+                  "state": "Enabled",
+                  "action": "Log",
+                  "comment": "XSS via libinjection — set to Log to validate before blocking"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "ruleSetType": "Microsoft_BotManagerRuleSet",
+          "ruleSetVersion": "1.0"
+        }
+      ]
+    }
+  }
+}

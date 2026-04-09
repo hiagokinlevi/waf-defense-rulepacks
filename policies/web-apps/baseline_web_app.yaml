@@ -1,0 +1,122 @@
+# =============================================================================
+# k1N Policy Pack: Baseline Web Application Protection
+# =============================================================================
+# This YAML policy pack defines the recommended set of WAF rules for a
+# generic web application. It references individual packs from this repository
+# and documents the rationale for including each rule.
+#
+# Usage: Use this as a checklist or as input to a policy-as-code automation tool.
+#
+# Target audience: Security engineers deploying WAF for a new web application.
+# =============================================================================
+
+policy:
+  name: "Baseline Web Application Protection"
+  version: "1.0.0"
+  description: >
+    A minimum viable WAF security baseline for generic web applications.
+    Covers the most impactful attack classes with the lowest false positive risk.
+    Start here for any new web application deployment.
+  maturity: "reviewed"
+  app_context: "generic"
+
+  # ---------------------------------------------------------------------------
+  # Phase 1: Always Deploy (Low False Positive Risk)
+  # ---------------------------------------------------------------------------
+  # These rules have minimal false positive risk and should be deployed
+  # in enforcement mode from day one.
+  phase_1_immediate:
+    - pack: "cloudflare/headers/security_headers_baseline.json"
+      reason: >
+        Security headers (HSTS, X-Frame-Options, X-Content-Type-Options) have
+        no false positive risk and immediately improve the security posture
+        of every response.
+      deploy_mode: "enforce"
+
+    - pack: "cloudflare/waf-rules/protect_admin_panel.json"
+      reason: >
+        Admin panel restriction to allowlisted IPs eliminates the largest
+        attack surface for unauthorized access. Update the IP allowlist
+        before deploying.
+      deploy_mode: "block"
+      prerequisite: "Update allowlisted IP ranges to match your office/VPN CIDRs"
+
+  # ---------------------------------------------------------------------------
+  # Phase 2: Deploy After 72h Log Validation
+  # ---------------------------------------------------------------------------
+  # Start in log mode. Review logs for false positives. Switch to block.
+  phase_2_after_log_validation:
+    - pack: "cloudflare/waf-rules/block_sqli.json"
+      reason: >
+        SQL injection is OWASP A03 and one of the most impactful attack classes.
+        Deploy in log mode first to identify false positives on search/filter endpoints.
+      deploy_mode: "log_then_block"
+      log_period_hours: 72
+      known_fp_paths:
+        - "/api/search"
+        - "/api/query"
+
+    - pack: "cloudflare/waf-rules/block_xss.json"
+      reason: >
+        XSS is OWASP A03 and a primary attack vector for session hijacking.
+        Deploy in log mode first to identify false positives on rich text editor endpoints.
+      deploy_mode: "log_then_block"
+      log_period_hours: 72
+      known_fp_paths:
+        - "/api/content"
+        - "/editor/*"
+
+    - pack: "cloudflare/rate-limits/login_rate_limit.json"
+      reason: >
+        Login brute-force and credential stuffing are common and damaging attacks.
+        Validate that no legitimate automation hits the login endpoint at > 5 req/min.
+      deploy_mode: "log_then_block"
+      log_period_hours: 24
+
+  # ---------------------------------------------------------------------------
+  # Phase 3: Deploy After 1-Week Monitoring
+  # ---------------------------------------------------------------------------
+  # These rules require more careful tuning based on your traffic profile.
+  phase_3_after_monitoring:
+    - pack: "cloudflare/rate-limits/api_rate_limit.json"
+      reason: >
+        API rate limiting protects against scraping, excessive data harvesting,
+        and API DDoS. Requires traffic profiling to set appropriate thresholds.
+      deploy_mode: "log_then_block"
+      log_period_hours: 168
+      prerequisite: "Collect API request rate metrics (p50/p95/p99) before setting thresholds"
+
+    - pack: "cloudflare/bot-rules/bot_mitigation_baseline.json"
+      reason: >
+        Bot mitigation reduces automated threat traffic. Requires careful exclusion
+        of API endpoints and monitoring tools.
+      deploy_mode: "challenge_then_block"
+      log_period_hours: 168
+      note: "Requires Cloudflare Bot Management add-on (Pro plan minimum)"
+
+  # ---------------------------------------------------------------------------
+  # Exclusion Management
+  # ---------------------------------------------------------------------------
+  # Document all rule exclusions here for audit purposes.
+  # Do NOT silently add exclusions — document the reason.
+  exclusions:
+    - pack: "cloudflare/waf-rules/block_xss.json"
+      path: "/api/v1/posts"
+      method: "POST"
+      reason: "Rich text editor submits HTML content in request body"
+      added_by: "security-team"
+      review_date: "2026-07-01"
+
+  # ---------------------------------------------------------------------------
+  # Review Schedule
+  # ---------------------------------------------------------------------------
+  review:
+    quarterly_tasks:
+      - "Review and update admin panel IP allowlist"
+      - "Review API rate limit thresholds against current traffic baselines"
+      - "Review and clean up rule exclusions — remove if no longer needed"
+      - "Check if any packs have new versions available"
+    annual_tasks:
+      - "Full policy review against current OWASP Top 10"
+      - "Penetration test against WAF rules"
+      - "Validate maturity progression of all deployed packs"

@@ -1,0 +1,42 @@
+{
+  "name": "Login Endpoint Rate Limit",
+  "vendor": "cloudflare",
+  "category": "rate_limiting",
+  "app_context": "generic",
+  "objective": "Limit POST requests to the login endpoint to a maximum of 5 requests per IP per minute, blocking credential stuffing and brute-force login attacks",
+  "risk_mitigated": "Brute-force password attacks, credential stuffing, account enumeration via login endpoint",
+  "severity": "high",
+  "mode": "block",
+  "recommended_for": ["web_apps", "saas", "admin_panels", "apis"],
+  "potential_side_effects": "Legitimate users on shared IP addresses (e.g., corporate NAT, large office networks) may hit the rate limit if many users attempt to log in simultaneously. Consider using a higher threshold or a 'challenge' action instead of 'block' for shared IP scenarios.",
+  "tuning_notes": "Adjust the threshold (currently 5 req/min) based on your user base. For high-traffic apps, 10-20 req/min per IP is still effective against brute force while reducing friction for shared IPs. Consider adding a CAPTCHA challenge action before switching to a hard block.",
+  "deployment_notes": "Start with a 'log' action to observe your baseline login traffic. Identify legitimate high-frequency login patterns (batch SSO callbacks, automated testing) before switching to 'block'. Coordinate with application teams.",
+  "monitoring_notes": "Monitor rate limit events. A sustained high rate of limit hits from a single ASN or subnet may indicate an ongoing credential stuffing attack. Consider automatically blocking the source ASN via a separate firewall rule.",
+  "version": "1.0.0",
+  "maturity": "reviewed",
+  "references": [
+    "https://owasp.org/www-project-top-ten/2021/A07_2021-Identification_and_Authentication_Failures",
+    "https://cheatsheetseries.owasp.org/cheatsheets/Authentication_Cheat_Sheet.html"
+  ],
+  "cloudflare_rate_limit_config": {
+    "description": "Login brute-force rate limit — k1N pack v1.0",
+    "match": {
+      "request": {
+        "methods": ["POST"],
+        "url_pattern": "*/login*"
+      }
+    },
+    "threshold": 5,
+    "period": 60,
+    "action": {
+      "mode": "ban",
+      "timeout": 600,
+      "response": {
+        "content_type": "application/json",
+        "body": "{\"error\": \"Too many login attempts. Please wait before trying again.\"}"
+      }
+    }
+  },
+  "paths_to_cover": ["/login", "/api/login", "/auth/login", "/sign-in", "/api/auth/signin"],
+  "tags": ["rate-limiting", "brute-force", "credential-stuffing", "owasp-a07", "high"]
+}

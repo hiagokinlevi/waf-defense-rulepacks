@@ -1,0 +1,26 @@
+{
+  "name": "Block Cross-Site Scripting (XSS) Attempts",
+  "vendor": "cloudflare",
+  "category": "xss_protection",
+  "app_context": "generic",
+  "objective": "Detect and block common XSS payload patterns in query strings and request bodies, including script injection, event handler injection, and javascript: URI schemes",
+  "risk_mitigated": "Reflected and stored XSS attacks that can lead to session hijacking, credential theft, defacement, and malicious redirects",
+  "severity": "high",
+  "mode": "block",
+  "recommended_for": ["web_apps", "cms_platforms", "user_generated_content_platforms"],
+  "potential_side_effects": "May block legitimate requests from rich text editors, content management systems, or any application that accepts HTML input from users. WYSIWYG editors (TinyMCE, Quill, etc.) often submit HTML in request bodies. Exclude those endpoints from this rule.",
+  "tuning_notes": "Add path-based exclusions for known HTML-accepting endpoints (e.g., /api/posts/content, /editor/save). Consider lowering the expression to only match on query strings if body matching produces too many false positives.",
+  "deployment_notes": "Deploy in 'log' mode for at least 72 hours. Pay special attention to any CMS endpoints, rich text editor endpoints, or APIs that accept markup. Coordinate with frontend teams.",
+  "monitoring_notes": "Track block events by URI path. High false positive rates on a specific path indicate that path needs an exclusion. Do not remove the entire rule — scope the exclusion narrowly.",
+  "version": "1.0.0",
+  "maturity": "reviewed",
+  "references": [
+    "https://owasp.org/www-project-top-ten/2021/A03_2021-Injection",
+    "https://cheatsheetseries.owasp.org/cheatsheets/Cross_Site_Scripting_Prevention_Cheat_Sheet.html",
+    "https://portswigger.net/web-security/cross-site-scripting"
+  ],
+  "cloudflare_expression": "(http.request.uri.query contains \"<script\" or http.request.uri.query contains \"javascript:\" or http.request.uri.query contains \"onerror=\" or http.request.uri.query contains \"onload=\" or http.request.uri.query contains \"alert(\" or http.request.uri.query contains \"document.cookie\" or http.request.body contains \"<script\" or http.request.body contains \"javascript:\" or http.request.body contains \"onerror=\" or http.request.body contains \"onload=\" or http.request.body contains \"<iframe\" or http.request.body contains \"document.cookie\")",
+  "action": "block",
+  "log_only_expression": "(http.request.uri.query contains \"<script\" or http.request.uri.query contains \"javascript:\" or http.request.body contains \"<script\" or http.request.body contains \"javascript:\")",
+  "tags": ["xss", "injection", "owasp-a03", "high"]
+}

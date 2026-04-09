@@ -1,0 +1,50 @@
+{
+  "name": "Bot Mitigation Baseline",
+  "vendor": "cloudflare",
+  "category": "bot_protection",
+  "app_context": "generic",
+  "objective": "Challenge or block high-confidence automated traffic while allowing legitimate browsers, search engine crawlers, and known good bots. Uses Cloudflare Bot Score to tier the response: score < 10 = block, 10-29 = JS challenge, 30-49 = managed challenge.",
+  "risk_mitigated": "Automated scraping, credential stuffing bots, vulnerability scanners, DDoS bots, inventory hoarding bots",
+  "severity": "high",
+  "mode": "challenge",
+  "recommended_for": ["web_apps", "e-commerce", "saas", "login_pages"],
+  "potential_side_effects": "Legitimate API clients that do not execute JavaScript will fail JS challenges. Ensure API endpoints use a separate rule that does not issue JS challenges. Monitoring tools and uptime checkers may be challenged — allowlist their IPs.",
+  "tuning_notes": "Adjust bot score thresholds based on your traffic profile. If you see legitimate users being challenged, raise the thresholds. Use the Cloudflare Bot Analytics dashboard to review which user agents are being scored as bots. Allowlist verified bots (Googlebot, Bingbot) explicitly.",
+  "deployment_notes": "Start by enabling 'Super Bot Fight Mode' in Cloudflare dashboard for baseline protection. This custom rule provides finer-grained control on top of that. Deploy in 'log' mode first to assess the volume of bot traffic hitting your application.",
+  "monitoring_notes": "Track the ratio of bot-challenged vs bot-blocked traffic over time. A sudden spike in high-confidence bot traffic (score < 10) may indicate an active attack. Investigate the originating ASNs.",
+  "version": "1.0.0",
+  "maturity": "reviewed",
+  "references": [
+    "https://developers.cloudflare.com/bots/concepts/bot-score/",
+    "https://developers.cloudflare.com/bots/get-started/bot-score/"
+  ],
+  "cloudflare_rules": [
+    {
+      "description": "Block high-confidence automated bots (score < 10)",
+      "expression": "cf.bot_management.score lt 10 and not cf.bot_management.verified_bot",
+      "action": "block"
+    },
+    {
+      "description": "JS challenge likely bots (score 10-29) — will fail non-browser clients",
+      "expression": "cf.bot_management.score lt 30 and cf.bot_management.score ge 10 and not cf.bot_management.verified_bot",
+      "action": "js_challenge"
+    },
+    {
+      "description": "Managed challenge ambiguous traffic (score 30-49)",
+      "expression": "cf.bot_management.score lt 50 and cf.bot_management.score ge 30 and not cf.bot_management.verified_bot",
+      "action": "managed_challenge"
+    }
+  ],
+  "known_good_bots_to_allowlist": [
+    "Googlebot",
+    "Bingbot",
+    "Slurp",
+    "DuckDuckBot",
+    "Baiduspider",
+    "YandexBot",
+    "facebot",
+    "ia_archiver"
+  ],
+  "prerequisite": "Requires Cloudflare Bot Management add-on or Pro plan with Super Bot Fight Mode",
+  "tags": ["bot-protection", "automation", "scraping", "high"]
+}

@@ -1,0 +1,25 @@
+{
+  "name": "Restrict Access to Administrative Panels",
+  "vendor": "cloudflare",
+  "category": "access_control",
+  "app_context": "generic",
+  "objective": "Block access to common administrative path prefixes (/admin, /wp-admin, /phpmyadmin, /cpanel, /dashboard) from IP addresses not on the allowlist",
+  "risk_mitigated": "Unauthorized access to admin interfaces, brute-force attacks on admin login pages, discovery of admin panel paths by scanners",
+  "severity": "critical",
+  "mode": "block",
+  "recommended_for": ["web_apps", "cms_platforms", "admin_panels", "wordpress"],
+  "potential_side_effects": "Will block legitimate administrators who are not on the allowlisted IP ranges. Ensure all admin team members and CI/CD agents that access admin APIs are covered in the IP allowlist before enabling block mode.",
+  "tuning_notes": "Update the ip.src allowlist with your office IP ranges, VPN exit nodes, and any CI/CD runner IPs that access admin endpoints. Add additional path prefixes specific to your application stack if needed (e.g., /grafana, /kibana, /jenkins).",
+  "deployment_notes": "This rule should be deployed in 'block' mode from the start for new deployments. For existing deployments, use 'log' mode for 24 hours to identify all admin access patterns before switching to block. Test with a non-admin account after enabling.",
+  "monitoring_notes": "Any legitimate block events indicate an admin user is not on the allowlist. Investigate and update the allowlist rather than widening the exception. Sudden spikes in block events may indicate an active admin panel brute-force attack.",
+  "version": "1.0.0",
+  "maturity": "reviewed",
+  "references": [
+    "https://owasp.org/www-project-top-ten/2021/A01_2021-Broken_Access_Control",
+    "https://cheatsheetseries.owasp.org/cheatsheets/Access_Control_Cheat_Sheet.html"
+  ],
+  "cloudflare_expression": "(http.request.uri.path wildcard \"/admin*\" or http.request.uri.path wildcard \"/wp-admin*\" or http.request.uri.path wildcard \"/phpmyadmin*\" or http.request.uri.path wildcard \"/cpanel*\" or http.request.uri.path wildcard \"/dashboard*\" or http.request.uri.path wildcard \"/administrator*\") and not (ip.src in {192.168.0.0/16 10.0.0.0/8 172.16.0.0/12})",
+  "action": "block",
+  "allowlist_note": "Replace the IP CIDR list with your actual office, VPN, and CI/CD runner IP ranges. Do NOT deploy without updating this list.",
+  "tags": ["access-control", "admin-protection", "owasp-a01", "critical"]
+}

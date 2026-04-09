@@ -1,0 +1,72 @@
+{
+  "name": "API Endpoint Rate Limit Baseline",
+  "vendor": "cloudflare",
+  "category": "rate_limiting",
+  "app_context": "api",
+  "objective": "Apply a tiered rate limiting baseline to all /api/* paths: 100 req/min for unauthenticated requests, 500 req/min for authenticated requests (JWT bearer detected), with burst allowance",
+  "risk_mitigated": "API abuse, scraping, DDoS via API endpoint flooding, excessive data harvesting",
+  "severity": "high",
+  "mode": "block",
+  "recommended_for": ["apis", "saas", "microservices"],
+  "potential_side_effects": "Batch processing jobs or high-throughput integrations may hit the unauthenticated rate limit. Ensure all machine-to-machine clients use proper Authorization headers so they benefit from the higher authenticated threshold.",
+  "tuning_notes": "Adjust thresholds based on observed p99 request rates in your API gateway logs before deploying. Consider per-endpoint limits for particularly sensitive or expensive endpoints (e.g., /api/export, /api/search). Use Cloudflare's custom response to return a Retry-After header.",
+  "deployment_notes": "Run in 'log' mode for one week, collecting p50/p95/p99 request rates per endpoint and IP. Use this data to set appropriate thresholds. Ensure your application teams know the limits and that SDKs/clients implement exponential backoff.",
+  "monitoring_notes": "Track rate limit hits by endpoint path and client ASN. High hit rates on /api/search or /api/export may indicate scraping. Consider serving challenge pages instead of hard blocks for ambiguous traffic.",
+  "version": "1.0.0",
+  "maturity": "reviewed",
+  "references": [
+    "https://owasp.org/API-Security/editions/2023/en/0xa4-unrestricted-resource-consumption/",
+    "https://developers.cloudflare.com/waf/rate-limiting-rules/"
+  ],
+  "cloudflare_rate_limit_config": {
+    "unauthenticated": {
+      "description": "API unauthenticated rate limit — k1N pack v1.0",
+      "match": {
+        "request": {
+          "url_pattern": "*/api/*"
+        },
+        "response": {
+          "headers": {
+            "name": "Authorization",
+            "op": "absent"
+          }
+        }
+      },
+      "threshold": 100,
+      "period": 60,
+      "action": {
+        "mode": "ban",
+        "timeout": 300,
+        "response": {
+          "content_type": "application/json",
+          "body": "{\"error\": \"Rate limit exceeded. Provide an Authorization header for higher limits.\"}"
+        }
+      }
+    },
+    "authenticated": {
+      "description": "API authenticated rate limit — k1N pack v1.0",
+      "match": {
+        "request": {
+          "url_pattern": "*/api/*"
+        },
+        "response": {
+          "headers": {
+            "name": "Authorization",
+            "op": "present"
+          }
+        }
+      },
+      "threshold": 500,
+      "period": 60,
+      "action": {
+        "mode": "ban",
+        "timeout": 60,
+        "response": {
+          "content_type": "application/json",
+          "body": "{\"error\": \"Rate limit exceeded. Please back off and retry with exponential backoff.\"}"
+        }
+      }
+    }
+  },
+  "tags": ["rate-limiting", "api-protection", "owasp-api4", "high"]
+}

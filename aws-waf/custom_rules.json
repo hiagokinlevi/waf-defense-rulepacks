@@ -1,0 +1,143 @@
+{
+  "_k1n_metadata": {
+    "name": "AWS WAF Custom Rules — Login Rate Limit and Admin Protection",
+    "vendor": "aws-waf",
+    "version": "1.0.0",
+    "maturity": "reviewed",
+    "objective": "Custom rate limiting rule for login endpoints and IP-based restriction for admin paths",
+    "deployment_notes": "These rules must be added to the WebACL defined in managed_rule_groups.json. Assign lower priority numbers (1-9) so they are evaluated before managed rule groups. Deploy with Action: Count first, then switch to Block after validation."
+  },
+  "CustomRules": [
+    {
+      "Name": "k1n-LoginRateLimit",
+      "Priority": 1,
+      "Statement": {
+        "RateBasedStatement": {
+          "Limit": 100,
+          "EvaluationWindowSec": 300,
+          "AggregateKeyType": "IP",
+          "ScopeDownStatement": {
+            "AndStatement": {
+              "Statements": [
+                {
+                  "ByteMatchStatement": {
+                    "SearchString": "/login",
+                    "FieldToMatch": {
+                      "UriPath": {}
+                    },
+                    "TextTransformations": [
+                      {
+                        "Priority": 0,
+                        "Type": "LOWERCASE"
+                      }
+                    ],
+                    "PositionalConstraint": "CONTAINS"
+                  }
+                },
+                {
+                  "ByteMatchStatement": {
+                    "SearchString": "POST",
+                    "FieldToMatch": {
+                      "Method": {}
+                    },
+                    "TextTransformations": [
+                      {
+                        "Priority": 0,
+                        "Type": "NONE"
+                      }
+                    ],
+                    "PositionalConstraint": "EXACTLY"
+                  }
+                }
+              ]
+            }
+          },
+          "_comment": "Rate limit: 100 requests per IP per 5 minutes (300 seconds) to POST /login*. Adjust Limit based on your baseline traffic."
+        }
+      },
+      "Action": {
+        "Block": {
+          "CustomResponse": {
+            "ResponseCode": 429,
+            "CustomResponseBodyKey": "RateLimitBody"
+          }
+        }
+      },
+      "VisibilityConfig": {
+        "SampledRequestsEnabled": true,
+        "CloudWatchMetricsEnabled": true,
+        "MetricName": "k1nLoginRateLimit"
+      }
+    },
+    {
+      "Name": "k1n-AdminPathRestriction",
+      "Priority": 2,
+      "Statement": {
+        "AndStatement": {
+          "Statements": [
+            {
+              "OrStatement": {
+                "Statements": [
+                  {
+                    "ByteMatchStatement": {
+                      "SearchString": "/admin",
+                      "FieldToMatch": {
+                        "UriPath": {}
+                      },
+                      "TextTransformations": [
+                        {
+                          "Priority": 0,
+                          "Type": "LOWERCASE"
+                        }
+                      ],
+                      "PositionalConstraint": "STARTS_WITH"
+                    }
+                  },
+                  {
+                    "ByteMatchStatement": {
+                      "SearchString": "/wp-admin",
+                      "FieldToMatch": {
+                        "UriPath": {}
+                      },
+                      "TextTransformations": [
+                        {
+                          "Priority": 0,
+                          "Type": "LOWERCASE"
+                        }
+                      ],
+                      "PositionalConstraint": "STARTS_WITH"
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "NotStatement": {
+                "Statement": {
+                  "IPSetReferenceStatement": {
+                    "ARN": "REPLACE_WITH_YOUR_IP_SET_ARN",
+                    "_comment": "Create an AWS WAF IP set with your office/VPN CIDRs and replace the ARN above"
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "Action": {
+        "Block": {}
+      },
+      "VisibilityConfig": {
+        "SampledRequestsEnabled": true,
+        "CloudWatchMetricsEnabled": true,
+        "MetricName": "k1nAdminPathRestriction"
+      }
+    }
+  ],
+  "CustomResponseBodies": {
+    "RateLimitBody": {
+      "ContentType": "APPLICATION_JSON",
+      "Content": "{\"error\": \"Too many requests. Please slow down and try again later.\"}"
+    }
+  }
+}
