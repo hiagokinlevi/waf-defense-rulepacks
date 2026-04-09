@@ -1,7 +1,7 @@
 # waf-defense-rulepacks
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Status: Bootstrap](https://img.shields.io/badge/Status-Bootstrap-blue.svg)]()
+[![Status: Active Development](https://img.shields.io/badge/Status-Active%20Development-blue.svg)]()
 [![Vendors: 7](https://img.shields.io/badge/Vendors-7-green.svg)]()
 [![Packs: Growing](https://img.shields.io/badge/Packs-Growing-orange.svg)]()
 

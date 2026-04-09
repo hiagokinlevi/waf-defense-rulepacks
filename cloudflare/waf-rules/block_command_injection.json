@@ -1,0 +1,25 @@
+{
+  "name": "Block Command Injection Attempts",
+  "vendor": "cloudflare",
+  "category": "command_injection",
+  "app_context": "generic",
+  "objective": "Detect and block HTTP request patterns associated with shell metacharacter abuse, command substitution, and direct operating system command execution attempts",
+  "risk_mitigated": "Command injection that could let an attacker execute shell commands through vulnerable application parameters, resulting in remote code execution, data loss, or host compromise",
+  "severity": "critical",
+  "mode": "block",
+  "recommended_for": ["web_apps", "apis", "admin_panels"],
+  "potential_side_effects": "May block legitimate tooling that intentionally passes shell-like syntax, CI task definitions, or support workflows containing command snippets. Validate carefully on developer-focused endpoints.",
+  "tuning_notes": "Exclude narrowly scoped endpoints that intentionally accept shell syntax. If false positives appear, reduce generic metacharacter checks on the affected path before weakening explicit OS-command keyword matches.",
+  "deployment_notes": "Deploy in log mode for at least 48 hours on existing applications. Review hits on task runners, diagnostics endpoints, and support tooling before enabling block mode broadly.",
+  "monitoring_notes": "Alert on repeat blocks per source IP and correlate with application logs for failed command execution or template injection attempts. Sudden bursts usually indicate automated scanner activity.",
+  "version": "1.0.0",
+  "maturity": "reviewed",
+  "references": [
+    "https://owasp.org/www-community/attacks/Command_Injection",
+    "https://portswigger.net/web-security/os-command-injection"
+  ],
+  "cloudflare_expression": "(http.request.uri.query contains \";\" or http.request.uri.query contains \"&&\" or http.request.uri.query contains \"||\" or http.request.uri.query contains \"`\" or http.request.uri.query contains \"$(\" or http.request.uri.query contains \"/bin/sh\" or http.request.uri.query contains \"cmd.exe\" or http.request.uri.query contains \"powershell\" or http.request.body contains \";\" or http.request.body contains \"&&\" or http.request.body contains \"||\" or http.request.body contains \"`\" or http.request.body contains \"$(\" or http.request.body contains \"/bin/sh\" or http.request.body contains \"cmd.exe\" or http.request.body contains \"powershell\")",
+  "action": "block",
+  "log_only_expression": "(http.request.uri.query contains \"$(\" or http.request.uri.query contains \"`\" or http.request.body contains \"$(\" or http.request.body contains \"`\")",
+  "tags": ["command-injection", "os-command", "rce", "owasp-a03", "critical"]
+}

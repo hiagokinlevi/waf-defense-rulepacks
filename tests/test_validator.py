@@ -266,6 +266,20 @@ class TestValidatePack(unittest.TestCase):
         errors = validate_pack(nonexistent_path)
         self.assertTrue(len(errors) > 0, "Non-existent file should produce errors")
 
+    def test_container_template_with_k1n_metadata_is_skipped(self):
+        """Provider policy templates with _k1n_metadata should not fail pack validation."""
+        template = {
+            "_k1n_metadata": {
+                "name": "Template only",
+                "vendor": "aws-waf",
+                "version": "1.0.0",
+            },
+            "Rules": [],
+        }
+        pack_path = self._write_pack(template)
+        errors = validate_pack(pack_path)
+        self.assertEqual(errors, [], f"Template files should be skipped, got: {errors}")
+
     # -------------------------------------------------------------------------
     # Tests: should_skip()
     # -------------------------------------------------------------------------
@@ -317,6 +331,18 @@ class TestValidateRealPacks(unittest.TestCase):
             self.skipTest(f"Pack file not found: {pack_path}")
         errors = validate_pack(pack_path)
         self.assertEqual(errors, [], f"protect_admin_panel.json should be valid, got: {errors}")
+
+    def test_block_command_injection_pack_is_valid(self):
+        """The block_command_injection.json pack should pass validation."""
+        pack_path = REPO_ROOT / "cloudflare" / "waf-rules" / "block_command_injection.json"
+        if not pack_path.exists():
+            self.skipTest(f"Pack file not found: {pack_path}")
+        errors = validate_pack(pack_path)
+        self.assertEqual(
+            errors,
+            [],
+            f"block_command_injection.json should be valid, got: {errors}",
+        )
 
     def test_login_rate_limit_pack_is_valid(self):
         """The login_rate_limit.json pack should pass validation."""

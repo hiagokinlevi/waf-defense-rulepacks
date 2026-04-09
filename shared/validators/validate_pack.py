@@ -100,11 +100,12 @@ def validate_pack(pack_path: Path, schema: dict | None = None, verbose: bool = F
     except OSError as e:
         return [f"Cannot read file: {e}"]
 
-    # Skip internal metadata files (prefixed with _k1n_metadata)
-    if "_k1n_metadata" in pack and len(pack) <= 2:
-        # This is a container file (e.g., managed_rule_groups.json), not a rule pack
+    # Skip container templates that carry repo metadata but are not standalone packs.
+    # Examples: AWS/Azure policy templates that embed _k1n_metadata plus provider-
+    # specific payload keys rather than the canonical pack fields.
+    if "_k1n_metadata" in pack and not all(field in pack for field in REQUIRED_FIELDS):
         if verbose:
-            print(f"SKIP {pack_path} — container file with _k1n_metadata, not a rule pack")
+            print(f"SKIP {pack_path} — template file with _k1n_metadata, not a standalone pack")
         return []
 
     # --- Step 2: Check required fields ---

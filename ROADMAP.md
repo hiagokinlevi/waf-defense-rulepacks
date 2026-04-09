@@ -32,10 +32,10 @@ This document outlines the planned evolution of waf-defense-rulepacks. Items are
 
 **Goal**: Cover additional attack classes and add F5 / Imperva vendor support.
 
-- [ ] Cloudflare: Local File Inclusion (LFI) pack
+- [x] Cloudflare: Local File Inclusion (LFI) pack
 - [ ] Cloudflare: Remote File Inclusion (RFI) pack
-- [ ] Cloudflare: Command injection pack
-- [ ] Cloudflare: SSRF protection pack
+- [x] Cloudflare: Command injection pack
+- [x] Cloudflare: SSRF protection pack
 - [ ] Cloudflare: API abuse / excessive data exposure pack
 - [ ] AWS WAF: IP reputation rule (using AWS Managed IP reputation list)
 - [ ] AWS WAF: Log4Shell virtual patch pack
