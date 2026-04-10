@@ -1,0 +1,25 @@
+{
+  "name": "Block Remote File Inclusion Attempts",
+  "vendor": "cloudflare",
+  "category": "lfi_rfi_protection",
+  "app_context": "generic",
+  "objective": "Detect and block Remote File Inclusion attempts where file-loading parameters point to external HTTP, HTTPS, FTP, or protocol-relative resources",
+  "risk_mitigated": "Remote File Inclusion allowing vulnerable applications to fetch or include attacker-controlled remote code, templates, or configuration payloads",
+  "severity": "critical",
+  "mode": "block",
+  "recommended_for": ["web_apps", "apis", "cms", "admin_panels"],
+  "potential_side_effects": "May block legitimate endpoints that intentionally accept remote template, document, import, or webhook URLs in file-like parameters. Review file upload, import, CMS theme, and support tooling paths before enforcing globally.",
+  "tuning_notes": "Scope exclusions to exact endpoints that are explicitly designed to fetch remote resources, then pair this pack with server-side allowlists for trusted hosts and content types. Keep encoded URL indicators enabled because RFI payloads commonly hide schemes with percent encoding.",
+  "deployment_notes": "Deploy in log mode for 48 hours on existing applications. Review hits on file, path, page, template, include, require, src, source, document, import, and theme parameters before switching to block mode.",
+  "monitoring_notes": "Alert on any critical RFI hits against CMS, plugin, or template-rendering endpoints. Correlate repeated blocks with application errors and outbound egress logs to confirm the backend did not fetch the remote payload.",
+  "version": "1.0.0",
+  "maturity": "reviewed",
+  "references": [
+    "https://owasp.org/www-community/attacks/Remote_File_Inclusion",
+    "https://cwe.mitre.org/data/definitions/98.html"
+  ],
+  "cloudflare_expression": "(http.request.uri.query contains \"file=http://\" or http.request.uri.query contains \"file=https://\" or http.request.uri.query contains \"file=ftp://\" or http.request.uri.query contains \"file=//\" or http.request.uri.query contains \"path=http://\" or http.request.uri.query contains \"path=https://\" or http.request.uri.query contains \"include=http://\" or http.request.uri.query contains \"include=https://\" or http.request.uri.query contains \"require=http://\" or http.request.uri.query contains \"require=https://\" or http.request.uri.query contains \"page=http://\" or http.request.uri.query contains \"page=https://\" or http.request.uri.query contains \"template=http://\" or http.request.uri.query contains \"template=https://\" or http.request.uri.query contains \"src=http://\" or http.request.uri.query contains \"src=https://\" or http.request.uri.query contains \"source=http://\" or http.request.uri.query contains \"source=https://\" or http.request.uri.query contains \"document=http://\" or http.request.uri.query contains \"document=https://\" or http.request.uri.query contains \"import=http://\" or http.request.uri.query contains \"import=https://\" or http.request.uri.query contains \"theme=http://\" or http.request.uri.query contains \"theme=https://\" or http.request.uri.query contains \"file=http%3a%2f%2f\" or http.request.uri.query contains \"file=https%3a%2f%2f\" or http.request.uri.query contains \"include=http%3a%2f%2f\" or http.request.uri.query contains \"include=https%3a%2f%2f\" or http.request.uri.query contains \"page=http%3a%2f%2f\" or http.request.uri.query contains \"page=https%3a%2f%2f\" or http.request.body contains \"file=http://\" or http.request.body contains \"file=https://\" or http.request.body contains \"include=http://\" or http.request.body contains \"include=https://\" or http.request.body contains \"template=http://\" or http.request.body contains \"template=https://\")",
+  "action": "block",
+  "log_only_expression": "(http.request.uri.query contains \"file=http://\" or http.request.uri.query contains \"include=http://\" or http.request.uri.query contains \"template=http://\" or http.request.body contains \"file=http://\" or http.request.body contains \"include=http://\")",
+  "tags": ["rfi", "remote-file-inclusion", "file-inclusion", "owasp-a03", "cwe-98", "critical"]
+}

@@ -29,7 +29,7 @@ This is not a product — it is a practitioner's toolkit. Packs should always be
 | Vendor | Coverage |
 |---|---|
 | **Cloudflare** | WAF rules, rate limits, bot rules, security headers, Transform Rules, Terraform |
-| **AWS WAF** | WebACL with managed rule groups, custom rules, Terraform |
+| **AWS WAF** | WebACL with managed rule groups, standalone IP reputation and Log4Shell packs, custom rules, Terraform |
 | **Azure WAF** | Front Door policy, Application Gateway policy |
 | **F5 BIG-IP** | iRules and security policy templates *(planned)* |
 | **FortiWeb** | Signature rule export templates *(planned)* |
@@ -103,11 +103,16 @@ python -m pip install -e '.[dev]'
 ```
 
 If you are working in a restricted or offline environment that already has the
-runtime dependencies available, install without build isolation:
+runtime dependencies and build backend (`setuptools` + `wheel`) available,
+install without build isolation:
 
 ```bash
 python -m pip install --no-build-isolation --no-deps -e .
 ```
+
+On Python 3.12+ and 3.13 virtualenvs, install from an environment where
+`setuptools` is already present, or create the venv with access to the local
+site packages before using `--no-build-isolation`.
 
 ### 3. Pick a pack and review it
 
@@ -179,6 +184,11 @@ aws wafv2 create-web-acl --cli-input-json file://aws-waf/managed_rule_groups.jso
 
 See [`docs/deployment-guides/aws_waf.md`](docs/deployment-guides/aws_waf.md) for step-by-step instructions.
 
+The standalone AWS IP reputation pack is available at
+[`aws-waf/rules/ip_reputation_managed_group.json`](aws-waf/rules/ip_reputation_managed_group.json).
+It starts in `Count` mode and documents the transition to enforcement after
+sampled-request review.
+
 ---
 
 ## Validating Packs
@@ -200,6 +210,8 @@ The host header attack detector is available at [`shared/rulepacks/host_header_a
 - internal, loopback, and cloud metadata targets
 - external-domain mismatches between `Host` and forwarding headers
 - IP-literal overrides against canonical domain-based routing
+
+The Cloudflare RFI pack is available at [`cloudflare/waf-rules/block_remote_file_inclusion.json`](cloudflare/waf-rules/block_remote_file_inclusion.json) and blocks file-loading parameters that point to external HTTP, HTTPS, FTP, protocol-relative, or percent-encoded remote resources. Deploy it in log mode first on CMS, import, and template-rendering paths before enabling block mode.
 
 ---
 

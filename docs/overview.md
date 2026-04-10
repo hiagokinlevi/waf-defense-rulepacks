@@ -38,7 +38,7 @@ All content in this repository is strictly for defensive purposes: protecting sy
 ```
 waf-defense-rulepacks/
 ├── {vendor}/                  # One directory per WAF vendor
-│   ├── waf-rules/             # Core WAF rules (SQLi, XSS, etc.)
+│   ├── waf-rules/             # Core WAF rules (SQLi, XSS, RFI, etc.)
 │   ├── rate-limits/           # Rate limiting rules
 │   ├── bot-rules/             # Bot mitigation rules
 │   ├── headers/               # Security header rules
@@ -71,3 +71,7 @@ See the [README](../README.md) for a quick start guide.
 For vendor-specific deployment, see:
 - [Cloudflare Deployment Guide](deployment-guides/cloudflare.md)
 - [AWS WAF Deployment Guide](deployment-guides/aws_waf.md)
+
+AWS WAF teams that do not need the full baseline WebACL can start with the
+standalone managed-rule packs under `aws-waf/rules/`, including the IP
+reputation pack that ships in Count mode for sampled-request review.

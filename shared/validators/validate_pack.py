@@ -59,7 +59,16 @@ VALID_MATURITIES = {"draft", "reviewed", "tested", "operational", "mature"}
 VALID_MODES = {"block", "log", "challenge", "count", "js_challenge", "managed_challenge"}
 
 # Files and directories to skip during --all validation
-SKIP_PATTERNS = ["schemas", "examples", "terraform", ".git", "node_modules"]
+SKIP_PATTERNS = [
+    "schemas",
+    "examples",
+    "terraform",
+    ".git",
+    ".pytest_cache",
+    ".venv",
+    "node_modules",
+    "site-packages",
+]
 
 
 def load_schema() -> dict | None:

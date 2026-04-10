@@ -294,6 +294,14 @@ class TestValidatePack(unittest.TestCase):
         path = Path("/repo/cloudflare/terraform/main.tf.json")
         self.assertTrue(should_skip(path))
 
+    def test_should_skip_virtualenv_metadata(self):
+        """Installed package JSON in local virtualenvs should not be treated as packs."""
+        path = Path(
+            "/repo/.venv_install/lib/python3.13/site-packages/"
+            "k1n_waf_defense_rulepacks-0.1.0.dist-info/direct_url.json"
+        )
+        self.assertTrue(should_skip(path))
+
     def test_should_not_skip_waf_rules(self):
         """Regular WAF rule files should NOT be skipped."""
         path = Path("/repo/cloudflare/waf-rules/block_sqli.json")
@@ -344,6 +352,33 @@ class TestValidateRealPacks(unittest.TestCase):
             f"block_command_injection.json should be valid, got: {errors}",
         )
 
+    def test_block_remote_file_inclusion_pack_is_valid(self):
+        """The block_remote_file_inclusion.json pack should pass validation."""
+        pack_path = REPO_ROOT / "cloudflare" / "waf-rules" / "block_remote_file_inclusion.json"
+        if not pack_path.exists():
+            self.skipTest(f"Pack file not found: {pack_path}")
+        errors = validate_pack(pack_path)
+        self.assertEqual(
+            errors,
+            [],
+            f"block_remote_file_inclusion.json should be valid, got: {errors}",
+        )
+
+    def test_block_remote_file_inclusion_expression_covers_encoded_payloads(self):
+        """The RFI pack should preserve file-context and encoded scheme coverage."""
+        pack_path = REPO_ROOT / "cloudflare" / "waf-rules" / "block_remote_file_inclusion.json"
+        if not pack_path.exists():
+            self.skipTest(f"Pack file not found: {pack_path}")
+        pack = json.loads(pack_path.read_text())
+        expression = pack["cloudflare_expression"]
+        for indicator in (
+            "file=http://",
+            "include=https://",
+            "template=http://",
+            "file=http%3a%2f%2f",
+        ):
+            self.assertIn(indicator, expression)
+
     def test_login_rate_limit_pack_is_valid(self):
         """The login_rate_limit.json pack should pass validation."""
         pack_path = REPO_ROOT / "cloudflare" / "rate-limits" / "login_rate_limit.json"
@@ -359,6 +394,32 @@ class TestValidateRealPacks(unittest.TestCase):
             self.skipTest(f"Pack file not found: {pack_path}")
         errors = validate_pack(pack_path)
         self.assertEqual(errors, [], f"bot_mitigation_baseline.json should be valid, got: {errors}")
+
+    def test_aws_ip_reputation_pack_is_valid(self):
+        """The standalone AWS IP reputation pack should pass validation."""
+        pack_path = REPO_ROOT / "aws-waf" / "rules" / "ip_reputation_managed_group.json"
+        if not pack_path.exists():
+            self.skipTest(f"Pack file not found: {pack_path}")
+        errors = validate_pack(pack_path)
+        self.assertEqual(
+            errors,
+            [],
+            f"ip_reputation_managed_group.json should be valid, got: {errors}",
+        )
+
+    def test_aws_ip_reputation_pack_starts_in_count_mode(self):
+        """The reputation pack should be safe to attach before enforcement."""
+        pack_path = REPO_ROOT / "aws-waf" / "rules" / "ip_reputation_managed_group.json"
+        pack = json.loads(pack_path.read_text())
+        rule = pack["aws_waf_rule"]
+
+        self.assertEqual(pack["mode"], "count")
+        self.assertEqual(
+            rule["Statement"]["ManagedRuleGroupStatement"]["Name"],
+            "AWSManagedRulesAmazonIpReputationList",
+        )
+        self.assertEqual(rule["OverrideAction"], {"Count": {}})
+        self.assertTrue(rule["VisibilityConfig"]["CloudWatchMetricsEnabled"])
 
 
 if __name__ == "__main__":

@@ -1,0 +1,60 @@
+{
+  "name": "AWS WAF - Amazon IP Reputation Managed Rule Group",
+  "vendor": "aws-waf",
+  "category": "bot_protection",
+  "app_context": "generic",
+  "objective": "Attach the AWSManagedRulesAmazonIpReputationList managed rule group as a reusable standalone pack for blocking requests from AWS threat intelligence sources.",
+  "risk_mitigated": "Known malicious scanners, credential stuffing infrastructure, botnet nodes, and other IPs that AWS threat intelligence identifies as high-risk sources.",
+  "severity": "high",
+  "mode": "count",
+  "recommended_for": [
+    "web_apps",
+    "apis",
+    "admin_panels",
+    "login_endpoints"
+  ],
+  "potential_side_effects": "Low expected false positive rate, but shared NAT, partner integrations, uptime monitors, and corporate egress gateways can occasionally appear in reputation feeds.",
+  "tuning_notes": "Deploy with OverrideAction Count first. Review sampled requests and allow-list trusted business partner CIDRs with a higher-priority IPSetReferenceStatement before enforcing the managed rule group.",
+  "deployment_notes": "Add this rule to an existing WebACL with a unique priority lower than broad application-layer managed groups. Keep visibility metrics enabled and switch OverrideAction from Count to None only after validation.",
+  "monitoring_notes": "Track CountedRequests or BlockedRequests for k1nAwsIpReputationList, review sampled requests for critical business paths, and alert on sudden increases that may indicate credential stuffing or scanner traffic.",
+  "version": "1.0.0",
+  "maturity": "reviewed",
+  "references": [
+    "https://docs.aws.amazon.com/waf/latest/developerguide/aws-managed-rule-groups-ip-rep.html",
+    "https://docs.aws.amazon.com/waf/latest/developerguide/waf-managed-rule-groups.html",
+    "https://docs.aws.amazon.com/waf/latest/developerguide/web-acl-testing.html"
+  ],
+  "aws_waf_rule": {
+    "Name": "k1n-AwsIpReputationList",
+    "Priority": 5,
+    "Statement": {
+      "ManagedRuleGroupStatement": {
+        "VendorName": "AWS",
+        "Name": "AWSManagedRulesAmazonIpReputationList",
+        "ExcludedRules": []
+      }
+    },
+    "OverrideAction": {
+      "Count": {}
+    },
+    "VisibilityConfig": {
+      "SampledRequestsEnabled": true,
+      "CloudWatchMetricsEnabled": true,
+      "MetricName": "k1nAwsIpReputationList"
+    }
+  },
+  "enforcement_transition": {
+    "initial_override_action": "Count",
+    "validated_override_action": "None",
+    "minimum_observation_hours": 72,
+    "allowlist_priority_guidance": "Place trusted partner or monitor IP set allow-list rules above this rule before switching to enforcement."
+  },
+  "tags": [
+    "aws-waf",
+    "ip-reputation",
+    "managed-rule-group",
+    "credential-stuffing",
+    "scanner-defense",
+    "threat-intelligence"
+  ]
+}

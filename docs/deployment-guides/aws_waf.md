@@ -32,6 +32,19 @@ aws wafv2 create-ip-set \
 
 Note the `ARN` from the output — you'll need it for the custom rules.
 
+### Optional: Attach the Standalone IP Reputation Pack
+
+Use `aws-waf/rules/ip_reputation_managed_group.json` when you want the AWS
+managed IP reputation rule group without adopting the full baseline WebACL. The
+pack starts with `OverrideAction: Count` so security teams can review sampled
+requests before enforcing blocks.
+
+Before switching `OverrideAction` to `None`, review:
+
+- trusted partner, uptime monitor, and corporate NAT CIDRs that need allow-listing
+- CloudWatch `CountedRequests` for the `k1nAwsIpReputationList` metric
+- sampled requests against login, checkout, API token, and admin paths
+
 ### Step 2: Create WebACL in Count Mode
 
 Update `aws-waf/managed_rule_groups.json` to use `OverrideAction: Count` for all managed rule groups (log-only mode).
