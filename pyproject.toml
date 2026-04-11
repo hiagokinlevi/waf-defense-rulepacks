@@ -3,9 +3,9 @@ requires = ["setuptools>=69", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "k1n-waf-defense-rulepacks"
+name = "waf-defense-rulepacks"
 version = "0.1.0"
-description = "Defensive WAF rulepacks, validators, and export tooling for the k1N Cyber Port portfolio."
+description = "Defensive WAF rulepacks, validators, and export tooling for the Cyber Port portfolio."
 readme = "README.md"
 requires-python = ">=3.11"
 license = "CC-BY-4.0"
@@ -24,6 +24,7 @@ dev = [
 
 [project.scripts]
 waf-export = "cli.waf_export_cmd:waf_export_cmd"
+waf-catalog = "cli.waf_catalog_cmd:waf_catalog_cmd"
 
 [tool.setuptools]
 include-package-data = true
