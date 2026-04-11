@@ -194,9 +194,70 @@ def _split_host_port(value: str) -> str:
 
 
 def _to_ip(value: str) -> Optional[ipaddress._BaseAddress]:
+    normalized = _split_host_port(value)
     try:
-        return ipaddress.ip_address(_split_host_port(value))
+        return ipaddress.ip_address(normalized)
     except ValueError:
+        return _parse_ipv4_legacy_literal(normalized)
+
+
+def _parse_ipv4_part(value: str) -> Optional[int]:
+    if not value:
+        return None
+    if value.lower().startswith("0x"):
+        try:
+            return int(value, 16)
+        except ValueError:
+            return None
+    if len(value) > 1 and value.startswith("0"):
+        if any(ch not in "01234567" for ch in value):
+            return None
+        try:
+            return int(value, 8)
+        except ValueError:
+            return None
+    if not value.isdigit():
+        return None
+    try:
+        return int(value, 10)
+    except ValueError:
+        return None
+
+
+def _parse_ipv4_legacy_literal(value: str) -> Optional[ipaddress.IPv4Address]:
+    parts = value.split(".")
+    if not 1 <= len(parts) <= 4:
+        return None
+
+    parsed_parts: list[int] = []
+    for part in parts:
+        parsed = _parse_ipv4_part(part)
+        if parsed is None:
+            return None
+        parsed_parts.append(parsed)
+
+    try:
+        if len(parsed_parts) == 1:
+            if not 0 <= parsed_parts[0] <= 0xFFFFFFFF:
+                return None
+            return ipaddress.IPv4Address(parsed_parts[0])
+        if len(parsed_parts) == 2:
+            first, second = parsed_parts
+            if not 0 <= first <= 0xFF or not 0 <= second <= 0xFFFFFF:
+                return None
+            return ipaddress.IPv4Address((first << 24) | second)
+        if len(parsed_parts) == 3:
+            first, second, third = parsed_parts
+            if not 0 <= first <= 0xFF or not 0 <= second <= 0xFF or not 0 <= third <= 0xFFFF:
+                return None
+            return ipaddress.IPv4Address((first << 24) | (second << 16) | third)
+        first, second, third, fourth = parsed_parts
+        if any(not 0 <= part <= 0xFF for part in parsed_parts):
+            return None
+        return ipaddress.IPv4Address(
+            (first << 24) | (second << 16) | (third << 8) | fourth
+        )
+    except ipaddress.AddressValueError:
         return None
 
 

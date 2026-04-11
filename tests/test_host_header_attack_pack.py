@@ -65,6 +65,18 @@ def test_hho003_metadata_hostname_fires() -> None:
     assert _has(result, "HHO-003")
 
 
+def test_hho003_decimal_localhost_alias_fires() -> None:
+    result = _pack().evaluate(_req(headers={"Host": "2130706433"}))
+    assert _has(result, "HHO-003")
+    assert result.blocked is True
+
+
+def test_hho003_hex_metadata_alias_fires() -> None:
+    result = _pack().evaluate(_req(headers={"Host": "0xA9FEA9FE"}))
+    assert _has(result, "HHO-003")
+    assert result.blocked is True
+
+
 def test_hho004_invalid_chars_fire() -> None:
     result = _pack().evaluate(_req(headers={"Host": "app.example.com/admin"}))
     assert _has(result, "HHO-004")
@@ -97,6 +109,13 @@ def test_hho006_multiple_values_in_single_header_fire() -> None:
 def test_hho007_ip_literal_override_fires() -> None:
     result = _pack().evaluate(
         _req(url="https://portal.example.com/", headers={"Host": "8.8.8.8"})
+    )
+    assert _has(result, "HHO-007")
+
+
+def test_hho007_hex_public_ip_literal_override_fires() -> None:
+    result = _pack().evaluate(
+        _req(url="https://portal.example.com/", headers={"Host": "0x08080808"})
     )
     assert _has(result, "HHO-007")
 
