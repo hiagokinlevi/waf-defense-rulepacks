@@ -456,6 +456,40 @@ class TestWafExportCmd:
         files = list(tmp_path.glob("cloudflare_login*.json"))
         assert len(files) == 1
 
+    def test_symlinked_output_dir_is_rejected(self, tmp_path):
+        real_dir = tmp_path / "real-exports"
+        real_dir.mkdir()
+        symlink_dir = tmp_path / "exports-link"
+        symlink_dir.symlink_to(real_dir, target_is_directory=True)
+
+        runner = CliRunner()
+        result = runner.invoke(
+            waf_export_cmd,
+            ["--vendor", "cloudflare", "--output-dir", str(symlink_dir)],
+        )
+
+        assert result.exit_code != 0
+        assert "symlinked output directory" in result.output
+        assert len(list(real_dir.iterdir())) == 0
+
+    def test_symlinked_destination_file_is_rejected(self, tmp_path):
+        target = tmp_path / "outside.json"
+        target.write_text("do-not-overwrite", encoding="utf-8")
+
+        export_name = _output_filename("cloudflare", "login-bruteforce")
+        symlink_dest = tmp_path / export_name
+        symlink_dest.symlink_to(target)
+
+        runner = CliRunner()
+        result = runner.invoke(
+            waf_export_cmd,
+            ["--vendor", "cloudflare", "--pack", "login-bruteforce", "--output-dir", str(tmp_path)],
+        )
+
+        assert result.exit_code == 1
+        assert "symlinked export target" in result.output
+        assert target.read_text(encoding="utf-8") == "do-not-overwrite"
+
     def test_stdout_flag_prints_content(self, tmp_path):
         runner = CliRunner()
         result = runner.invoke(

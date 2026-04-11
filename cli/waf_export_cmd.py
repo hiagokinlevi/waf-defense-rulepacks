@@ -116,6 +116,40 @@ def _output_filename(vendor: str, pack_name: str) -> str:
     return f"{vendor}_{safe_pack}.{ext}"
 
 
+def _prepare_output_dir(output_dir: str) -> Path:
+    """Create or validate the output directory without following symlinks."""
+    out_path = Path(output_dir)
+    if out_path.exists():
+        if out_path.is_symlink():
+            raise click.ClickException(
+                f"Refusing to write exports into symlinked output directory: {out_path}"
+            )
+        if not out_path.is_dir():
+            raise click.ClickException(f"Output path is not a directory: {out_path}")
+    else:
+        out_path.mkdir(parents=True, exist_ok=True)
+
+    return out_path.resolve()
+
+
+def _resolve_destination(out_path: Path, fname: str) -> Path:
+    """Resolve a safe destination path within the validated output directory."""
+    dest = out_path / fname
+
+    if dest.exists() and dest.is_symlink():
+        raise click.ClickException(
+            f"Refusing to overwrite symlinked export target: {dest}"
+        )
+
+    resolved_parent = dest.parent.resolve()
+    if resolved_parent != out_path:
+        raise click.ClickException(
+            f"Resolved export path escapes the output directory: {dest}"
+        )
+
+    return dest
+
+
 # ---------------------------------------------------------------------------
 # CLI command
 # ---------------------------------------------------------------------------
@@ -203,8 +237,7 @@ def waf_export_cmd(
                 click.echo(f"  Would write: {output_dir}/{fname}")
         return
 
-    out_path = Path(output_dir)
-    out_path.mkdir(parents=True, exist_ok=True)
+    out_path = _prepare_output_dir(output_dir)
 
     written: list[Path] = []
     errors: list[str] = []
@@ -219,7 +252,7 @@ def waf_export_cmd(
                     click.echo(f"\n# --- {_VENDOR_LABELS.get(v, v)} / {pk_name} ---")
                     click.echo(content)
 
-                dest = out_path / fname
+                dest = _resolve_destination(out_path, fname)
                 dest.write_text(content, encoding="utf-8")
                 written.append(dest)
                 click.echo(f"  Written: {dest}")
