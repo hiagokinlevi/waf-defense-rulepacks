@@ -36,7 +36,7 @@ This document outlines the planned evolution of waf-defense-rulepacks. Items are
 - [x] Cloudflare: Remote File Inclusion (RFI) pack
 - [x] Cloudflare: Command injection pack
 - [x] Cloudflare: SSRF protection pack
-- [ ] Cloudflare: API abuse / excessive data exposure pack
+- [x] Cloudflare: API abuse / excessive data exposure pack
 - [x] Host header poisoning / routing override analysis pack
 - [x] AWS WAF: IP reputation rule (using AWS Managed IP reputation list)
 - [x] AWS WAF: Log4Shell virtual patch pack

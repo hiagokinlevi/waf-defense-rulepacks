@@ -1,0 +1,26 @@
+{
+  "name": "Block API Abuse and Excessive Data Exposure Patterns",
+  "vendor": "cloudflare",
+  "category": "api_protection",
+  "app_context": "api",
+  "objective": "Detect and block high-risk API abuse indicators that often accompany bulk data harvesting, excessive field expansion, unsafe export access, and GraphQL schema reconnaissance.",
+  "risk_mitigated": "API abuse leading to excessive data exposure, large-scale record harvesting, unsafe export access, and reconnaissance of sensitive API surface area.",
+  "severity": "high",
+  "mode": "block",
+  "recommended_for": ["apis", "saas", "mobile_backends"],
+  "potential_side_effects": "Reporting endpoints, data exports, BI integrations, and legitimate GraphQL tooling may require path- or token-based exclusions before enabling block mode.",
+  "tuning_notes": "Start with public or unauthenticated API surfaces first. Exclude known-safe export routes and internal analytics consumers. Separate GraphQL introspection handling for staging versus production if developer tooling depends on it.",
+  "deployment_notes": "Deploy in log mode for at least 72 hours and review matches on export, search, analytics, and GraphQL paths. Coordinate with API owners before enabling block mode on routes used by partners or internal automation.",
+  "monitoring_notes": "Track matches by path, token type, source ASN, and user-agent. Rising events on /export, /graphql, and bulk query endpoints usually indicate scraping, reconnaissance, or enumeration pressure.",
+  "version": "1.0.0",
+  "maturity": "reviewed",
+  "references": [
+    "https://owasp.org/API-Security/editions/2023/en/0xa3-broken-object-property-level-authorization/",
+    "https://owasp.org/API-Security/editions/2023/en/0xa4-unrestricted-resource-consumption/",
+    "https://owasp.org/API-Security/editions/2023/en/0xa9-improper-inventory-management/"
+  ],
+  "cloudflare_expression": "(http.request.uri.path contains \"/api/\" and (http.request.uri.query contains \"fields=*\" or http.request.uri.query contains \"include=*\" or http.request.uri.query contains \"expand=*\" or http.request.uri.query contains \"debug=true\" or http.request.uri.query contains \"download=all\" or http.request.uri.query contains \"limit=1000\" or http.request.uri.query contains \"offset=10000\" or http.request.uri.path contains \"/export\" or http.request.uri.path contains \"/dump\" or http.request.uri.path contains \"/backup\" or (http.request.uri.path contains \"/graphql\" and (http.request.body contains \"__schema\" or http.request.body contains \"__type\"))))",
+  "action": "block",
+  "log_only_expression": "(http.request.uri.path contains \"/api/\" and (http.request.uri.query contains \"fields=*\" or http.request.uri.query contains \"include=*\" or http.request.uri.path contains \"/export\" or (http.request.uri.path contains \"/graphql\" and http.request.body contains \"__schema\")))",
+  "tags": ["api-protection", "data-exposure", "graphql", "export-abuse", "owasp-api3", "owasp-api4"]
+}
