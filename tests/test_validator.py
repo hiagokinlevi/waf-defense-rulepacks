@@ -19,7 +19,13 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(REPO_ROOT / "shared" / "validators"))
 
-from validate_pack import validate_pack, should_skip, REQUIRED_FIELDS
+from validate_pack import (
+    REQUIRED_FIELDS,
+    VALID_APP_CONTEXTS,
+    VALID_CATEGORIES,
+    validate_pack,
+    should_skip,
+)
 
 
 class TestValidatePack(unittest.TestCase):
@@ -214,6 +220,52 @@ class TestValidatePack(unittest.TestCase):
             f"Expected error about invalid 'mode', got: {errors}"
         )
 
+    def test_invalid_category_returns_error_without_jsonschema(self):
+        """Fallback validation should reject unmapped categories."""
+        pack = self._valid_pack()
+        pack["category"] = "totally_invalid"
+        pack_path = self._write_pack(pack)
+        errors = validate_pack(pack_path, schema=None)
+        self.assertTrue(
+            any("category" in e.lower() for e in errors),
+            f"Expected error about invalid 'category', got: {errors}"
+        )
+
+    def test_valid_pack_all_categories(self):
+        """All supported category values should be accepted by fallback validation."""
+        for category in sorted(VALID_CATEGORIES):
+            with self.subTest(category=category):
+                pack = self._valid_pack()
+                pack["category"] = category
+                pack_path = self._write_pack(pack)
+                errors = validate_pack(pack_path, schema=None)
+                self.assertEqual(errors, [], f"Category '{category}' should be valid, got: {errors}")
+
+    def test_valid_pack_all_app_contexts(self):
+        """All supported app_context values should be accepted when present."""
+        for app_context in sorted(VALID_APP_CONTEXTS):
+            with self.subTest(app_context=app_context):
+                pack = self._valid_pack()
+                pack["app_context"] = app_context
+                pack_path = self._write_pack(pack)
+                errors = validate_pack(pack_path, schema=None)
+                self.assertEqual(
+                    errors,
+                    [],
+                    f"app_context '{app_context}' should be valid, got: {errors}",
+                )
+
+    def test_invalid_app_context_returns_error_without_jsonschema(self):
+        """Fallback validation should reject invalid app_context values."""
+        pack = self._valid_pack()
+        pack["app_context"] = "totally_invalid"
+        pack_path = self._write_pack(pack)
+        errors = validate_pack(pack_path, schema=None)
+        self.assertTrue(
+            any("app_context" in e.lower() for e in errors),
+            f"Expected error about invalid 'app_context', got: {errors}"
+        )
+
     # -------------------------------------------------------------------------
     # Tests: Version format
     # -------------------------------------------------------------------------
@@ -265,6 +317,37 @@ class TestValidatePack(unittest.TestCase):
         nonexistent_path = Path(self.temp_dir) / "does_not_exist.json"
         errors = validate_pack(nonexistent_path)
         self.assertTrue(len(errors) > 0, "Non-existent file should produce errors")
+
+    def test_required_field_cannot_be_blank(self):
+        """Required string fields should reject whitespace-only values."""
+        pack = self._valid_pack()
+        pack["name"] = "   "
+        pack_path = self._write_pack(pack)
+        errors = validate_pack(pack_path, schema=None)
+        self.assertTrue(
+            any("blank" in e.lower() or "whitespace" in e.lower() for e in errors),
+            f"Expected blank-value validation error, got: {errors}"
+        )
+
+    def test_app_context_cannot_be_blank_when_present(self):
+        """Optional app_context should still reject whitespace-only values."""
+        pack = self._valid_pack()
+        pack["app_context"] = "   "
+        pack_path = self._write_pack(pack)
+        errors = validate_pack(pack_path, schema=None)
+        self.assertTrue(
+            any("app_context" in e.lower() for e in errors),
+            f"Expected app_context validation error, got: {errors}"
+        )
+
+    def test_top_level_array_returns_error(self):
+        """The validator should fail closed on non-object JSON documents."""
+        invalid_path = self._write_pack(["not", "a", "pack"])
+        errors = validate_pack(invalid_path)
+        self.assertTrue(
+            any("top-level" in e.lower() and "object" in e.lower() for e in errors),
+            f"Expected top-level object validation error, got: {errors}"
+        )
 
     def test_container_template_with_k1n_metadata_is_skipped(self):
         """Provider policy templates with _k1n_metadata should not fail pack validation."""

@@ -44,13 +44,25 @@
         "path_traversal",
         "virtual_patch",
         "api_protection",
-        "dos_protection"
+        "dos_protection",
+        "injection"
       ],
       "description": "Security category this pack addresses"
     },
     "app_context": {
       "type": "string",
-      "enum": ["generic", "saas", "api", "e-commerce", "cms", "admin_panel", "microservices", "mobile_backend"],
+      "enum": [
+        "generic",
+        "saas",
+        "api",
+        "e-commerce",
+        "cms",
+        "admin_panel",
+        "microservices",
+        "mobile_backend",
+        "java_apps",
+        "cloud_hosted"
+      ],
       "description": "Application context this pack is designed for"
     },
     "objective": {

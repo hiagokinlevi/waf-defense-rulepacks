@@ -46,6 +46,8 @@ REQUIRED_FIELDS = [
     "maturity",
 ]
 
+REQUIRED_STRING_FIELDS = tuple(REQUIRED_FIELDS)
+
 # Valid enum values for key fields
 VALID_VENDORS = {
     "cloudflare", "aws-waf", "azure-waf", "f5", "fortiweb",
@@ -57,6 +59,40 @@ VALID_SEVERITIES = {"critical", "high", "medium", "low", "informational"}
 VALID_MATURITIES = {"draft", "reviewed", "tested", "operational", "mature"}
 
 VALID_MODES = {"block", "log", "challenge", "count", "js_challenge", "managed_challenge"}
+
+# Keep fallback validation aligned with the schema and the pack corpus so
+# malformed metadata still fails closed when jsonschema is unavailable.
+VALID_CATEGORIES = {
+    "sqli_protection",
+    "xss_protection",
+    "access_control",
+    "rate_limiting",
+    "bot_protection",
+    "security_headers",
+    "authentication_protection",
+    "csrf_protection",
+    "lfi_rfi_protection",
+    "ssrf_protection",
+    "command_injection",
+    "path_traversal",
+    "virtual_patch",
+    "api_protection",
+    "dos_protection",
+    "injection",
+}
+
+VALID_APP_CONTEXTS = {
+    "generic",
+    "saas",
+    "api",
+    "e-commerce",
+    "cms",
+    "admin_panel",
+    "microservices",
+    "mobile_backend",
+    "java_apps",
+    "cloud_hosted",
+}
 
 # Files and directories to skip during --all validation
 SKIP_PATTERNS = [
@@ -109,6 +145,9 @@ def validate_pack(pack_path: Path, schema: dict | None = None, verbose: bool = F
     except OSError as e:
         return [f"Cannot read file: {e}"]
 
+    if not isinstance(pack, dict):
+        return [f"Top-level JSON value must be an object, got {type(pack).__name__}"]
+
     # Skip container templates that carry repo metadata but are not standalone packs.
     # Examples: AWS/Azure policy templates that embed _k1n_metadata plus provider-
     # specific payload keys rather than the canonical pack fields.
@@ -124,6 +163,19 @@ def validate_pack(pack_path: Path, schema: dict | None = None, verbose: bool = F
 
     if errors:
         # Stop early if required fields are missing — enum validation would fail anyway
+        return errors
+
+    for field in REQUIRED_STRING_FIELDS:
+        value = pack.get(field)
+        if not isinstance(value, str):
+            errors.append(
+                f"Invalid '{field}' type '{type(value).__name__}'. Expected a non-empty string"
+            )
+            continue
+        if not value.strip():
+            errors.append(f"Required field '{field}' must not be blank or whitespace only")
+
+    if errors:
         return errors
 
     # --- Step 3: Validate enum fields ---
@@ -142,6 +194,22 @@ def validate_pack(pack_path: Path, schema: dict | None = None, verbose: bool = F
     mode = pack.get("mode", "")
     if mode not in VALID_MODES:
         errors.append(f"Invalid 'mode' value '{mode}'. Must be one of: {sorted(VALID_MODES)}")
+
+    category = pack.get("category", "")
+    if category not in VALID_CATEGORIES:
+        errors.append(
+            f"Invalid 'category' value '{category}'. Must be one of: {sorted(VALID_CATEGORIES)}"
+        )
+
+    if "app_context" in pack:
+        app_context = pack.get("app_context")
+        if not isinstance(app_context, str) or not app_context.strip():
+            errors.append("'app_context' must be a non-empty string when provided")
+        elif app_context not in VALID_APP_CONTEXTS:
+            errors.append(
+                "Invalid 'app_context' value "
+                f"'{app_context}'. Must be one of: {sorted(VALID_APP_CONTEXTS)}"
+            )
 
     # --- Step 4: Validate version format (semantic versioning) ---
     version = pack.get("version", "")
