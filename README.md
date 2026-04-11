@@ -240,6 +240,8 @@ The host header attack detector is available at [`shared/rulepacks/host_header_a
 
 The Cloudflare RFI pack is available at [`cloudflare/waf-rules/block_remote_file_inclusion.json`](cloudflare/waf-rules/block_remote_file_inclusion.json) and blocks file-loading parameters that point to external HTTP, HTTPS, FTP, protocol-relative, or percent-encoded remote resources. Deploy it in log mode first on CMS, import, and template-rendering paths before enabling block mode.
 
+The Cloudflare API abuse and excessive data exposure pack is available at [`cloudflare/waf-rules/block_api_abuse_excessive_data_exposure.json`](cloudflare/waf-rules/block_api_abuse_excessive_data_exposure.json). It is designed for public API surfaces that need extra scrutiny around bulk field expansion, export-style endpoints, oversized pagination hints, and GraphQL introspection probes. Start with unauthenticated or partner-facing API routes in log mode and document any exclusions for BI exports, internal analytics consumers, and developer tooling before enabling block mode.
+
 Use [`docs/waf-landscape.md`](docs/waf-landscape.md) to compare WAF platform types and [`docs/review-checklists/vendor-selection.md`](docs/review-checklists/vendor-selection.md) to structure product selection and rollout decisions.
 
 ---

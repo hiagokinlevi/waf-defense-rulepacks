@@ -51,6 +51,22 @@ In Cloudflare Dashboard:
 
 Wait **at least 72 hours** before proceeding.
 
+### Step 3a: Deploy API abuse / excessive data exposure coverage
+
+Use [`cloudflare/waf-rules/block_api_abuse_excessive_data_exposure.json`](../../cloudflare/waf-rules/block_api_abuse_excessive_data_exposure.json) when you need defensive coverage for:
+
+- bulk field expansion such as `fields=*`, `include=*`, and `expand=*`
+- suspicious export-style paths like `/export`, `/dump`, and `/backup`
+- aggressive pagination hints such as `limit=1000` or `offset=10000`
+- GraphQL introspection probes on `/graphql`
+
+Recommended rollout:
+
+1. Start in **Log** mode on internet-facing APIs and partner endpoints.
+2. Review events for legitimate analytics jobs, BI exports, and staging GraphQL tooling.
+3. Add scoped exclusions for known-safe automation before moving to **Block**.
+4. Keep separate handling for staging and production if your engineering team still depends on schema introspection outside production.
+
 ### Step 4: Switch to Block Mode
 
 If no false positives were observed:
@@ -159,6 +175,12 @@ Key settings:
 ```
 <existing expression> and not http.request.uri.path contains "/api/search"
 ```
+
+### API Abuse Pack Blocking Legitimate Export or GraphQL Tooling
+
+**Symptom**: Export jobs, BI integrations, or developer schema tooling trigger the API abuse pack.
+
+**Fix**: Keep the rule in log mode while you identify trusted paths, service tokens, or source IP ranges. Then add narrow exclusions for those workflows instead of weakening the global expression. In most environments, `/graphql` introspection should be treated differently in staging and production.
 
 ### Admin Panel Rule Blocking Legitimate Admins
 
