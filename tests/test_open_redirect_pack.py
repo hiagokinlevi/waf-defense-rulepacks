@@ -261,9 +261,16 @@ def test_ored002_double_encoded_fires():
     # Double percent-encoding: %2568 -> %68 -> h
     encoded = "%2568ttp%253A%252F%252Fevil.com"
     r = evaluate(params={"url": encoded})
-    # After single unquote: %68ttp%3A%2F%2Fevil.com — still encoded, ORED-002
-    # may or may not fire depending on one-level decode; we just verify no crash
-    assert isinstance(r, OREDResult)
+    assert _has(r, "ORED-002")
+
+
+def test_ored002_double_encoded_allowed_domain_skipped():
+    encoded = "https%253A%252F%252Fmyapp.example.com%252Fhome"
+    r = evaluate(
+        params={"url": encoded},
+        allowed_domains=["myapp.example.com"],
+    )
+    assert not _has(r, "ORED-002")
 
 
 # ===========================================================================

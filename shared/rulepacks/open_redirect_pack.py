@@ -69,6 +69,7 @@ _SUSPICIOUS_TLDS: frozenset = frozenset({
 
 # Maximum length of evidence snippets
 _MAX_EVIDENCE_LEN: int = 100
+_MAX_URL_DECODE_PASSES: int = 3
 
 
 # ---------------------------------------------------------------------------
@@ -139,6 +140,21 @@ def _extract_domain(url: str) -> str:
         return urlparse(url).hostname or ""
     except Exception:
         return ""
+
+
+def _iter_decoded_variants(value: str, max_passes: int = _MAX_URL_DECODE_PASSES) -> List[str]:
+    """Return distinct percent-decoded variants in decode order."""
+    variants: List[str] = []
+    seen: set[str] = set()
+    current = value
+    for _ in range(max_passes):
+        decoded = unquote(current)
+        if decoded == current or decoded in seen:
+            break
+        variants.append(decoded)
+        seen.add(decoded)
+        current = decoded
+    return variants
 
 
 def _domain_allowed(domain: str, allowed_domains: List[str]) -> bool:
@@ -229,22 +245,23 @@ def _run_checks(
     # ------------------------------------------------------------------
     if not fired_001:
         # Only fire when raw did NOT already trigger ORED-001
-        decoded = unquote(raw_value)
-        if decoded != raw_value and _is_ored001_pattern(decoded.lstrip()):
-            domain = _extract_domain(decoded.lstrip())
-            if not _domain_allowed(domain, allowed_domains):
-                findings.append(OREDFinding(
-                    check_id="ORED-002",
-                    severity=_CHECK_SEVERITY["ORED-002"],
-                    title=_CHECK_TITLES["ORED-002"],
-                    detail=(
-                        f"Parameter '{param_name}' URL-encoded value decodes to an "
-                        f"external absolute URL (domain: '{domain}')."
-                    ),
-                    weight=_CHECK_WEIGHTS["ORED-002"],
-                    parameter=param_name,
-                    evidence=_truncate(raw_value),
-                ))
+        for decoded in _iter_decoded_variants(raw_value):
+            if _is_ored001_pattern(decoded.lstrip()):
+                domain = _extract_domain(decoded.lstrip())
+                if not _domain_allowed(domain, allowed_domains):
+                    findings.append(OREDFinding(
+                        check_id="ORED-002",
+                        severity=_CHECK_SEVERITY["ORED-002"],
+                        title=_CHECK_TITLES["ORED-002"],
+                        detail=(
+                            f"Parameter '{param_name}' URL-encoded value decodes to an "
+                            f"external absolute URL (domain: '{domain}')."
+                        ),
+                        weight=_CHECK_WEIGHTS["ORED-002"],
+                        parameter=param_name,
+                        evidence=_truncate(raw_value),
+                    ))
+                break
 
     # ------------------------------------------------------------------
     # ORED-003 — Double/triple-slash protocol-relative redirect
