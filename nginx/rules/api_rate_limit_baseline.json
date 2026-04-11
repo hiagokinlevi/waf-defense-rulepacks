@@ -1,0 +1,29 @@
+{
+  "name": "NGINX Baseline — API Rate Limit",
+  "vendor": "nginx",
+  "category": "rate_limiting",
+  "app_context": "api",
+  "objective": "Provide an NGINX rate-limit baseline for API endpoints that need burst control and basic abuse throttling at the reverse proxy layer.",
+  "risk_mitigated": "Automated abuse, token guessing, enumeration, and burst traffic against API authentication and query endpoints.",
+  "severity": "medium",
+  "mode": "block",
+  "recommended_for": ["apis", "mobile_backends", "partner_integrations"],
+  "potential_side_effects": "Partner integrations or mobile traffic behind shared carrier NAT may need per-route burst adjustments.",
+  "tuning_notes": "Create separate zones for login, token, and general API traffic. Use lower burst allowances for unauthenticated routes than for trusted authenticated APIs.",
+  "deployment_notes": "Apply first to staging ingress or a canary pool and validate legitimate client retry behavior before broad rollout.",
+  "monitoring_notes": "Monitor 429 volume, source IP concentration, and which endpoints trigger the limit most frequently. Correlate with application auth failures when possible.",
+  "version": "1.0.0",
+  "maturity": "reviewed",
+  "references": [
+    "https://nginx.org/en/docs/http/ngx_http_limit_req_module.html",
+    "https://owasp.org/www-project-top-ten/2021/A04_2021-Insecure_Design/"
+  ],
+  "nginx_limit_req": {
+    "zone": "api_limit",
+    "rate": "20r/m",
+    "burst": 10,
+    "status_code": 429,
+    "paths": ["/api/", "/oauth/token", "/api/auth"]
+  },
+  "tags": ["nginx", "api", "rate-limiting", "abuse-control"]
+}

@@ -68,3 +68,7 @@ def waf_catalog_cmd(repo_root: Path, output_format: str, output: Path | None) ->
         return
 
     click.echo(rendered)
+
+
+if __name__ == "__main__":
+    waf_catalog_cmd()

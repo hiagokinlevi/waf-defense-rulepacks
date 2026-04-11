@@ -1,0 +1,28 @@
+{
+  "name": "ModSecurity Baseline — Login Brute Force Protection",
+  "vendor": "modsecurity",
+  "category": "authentication_protection",
+  "app_context": "generic",
+  "objective": "Provide a ModSecurity baseline that tracks repeated login attempts per client and denies abusive authentication bursts.",
+  "risk_mitigated": "Credential stuffing and brute-force attacks against login endpoints protected by ModSecurity and OWASP CRS style deployments.",
+  "severity": "high",
+  "mode": "block",
+  "recommended_for": ["web_apps", "auth_flows", "admin_panels"],
+  "potential_side_effects": "Shared egress IPs, internal test runners, and synthetic monitoring may require exclusions or higher thresholds.",
+  "tuning_notes": "Tune thresholds per application and keep separate controls for MFA, password reset, and token issuance paths. Pair with CRS anomaly scoring for better context.",
+  "deployment_notes": "Roll out in a non-disruptive validation phase first and document all excluded networks before enabling deny actions in production.",
+  "monitoring_notes": "Track denied requests per IP and endpoint, especially /login and /signin. Review spikes together with IdP or application authentication logs.",
+  "version": "1.0.0",
+  "maturity": "reviewed",
+  "references": [
+    "https://owasp.org/www-project-top-ten/2021/A07_2021-Identification_and_Authentication_Failures",
+    "https://github.com/owasp-modsecurity/ModSecurity"
+  ],
+  "modsecurity_rules": [
+    "SecAction \"id:110000,phase:1,pass,nolog,initcol:ip=%{REMOTE_ADDR},setvar:tx.login_path=0\"",
+    "SecRule REQUEST_URI \"@beginsWith /login\" \"id:110010,phase:2,pass,nolog,setvar:tx.login_path=1\"",
+    "SecRule TX:LOGIN_PATH \"@eq 1\" \"id:110011,phase:2,pass,nolog,setvar:ip.login_counter=+1,expirevar:ip.login_counter=60\"",
+    "SecRule IP:LOGIN_COUNTER \"@gt 10\" \"id:110012,phase:2,deny,status:403,log,msg:'Login brute force baseline triggered'\""
+  ],
+  "tags": ["modsecurity", "authentication", "bruteforce", "credential-stuffing"]
+}

@@ -1,0 +1,29 @@
+{
+  "name": "Generic WAF Baseline Planning Pack",
+  "vendor": "generic",
+  "category": "api_protection",
+  "app_context": "generic",
+  "objective": "Provide a vendor-agnostic planning baseline that helps teams map minimum WAF controls before translating them into product-specific syntax.",
+  "risk_mitigated": "Gaps caused by inconsistent baseline design across vendors, applications, and operating teams.",
+  "severity": "medium",
+  "mode": "block",
+  "recommended_for": ["web_apps", "apis", "admin_panels"],
+  "potential_side_effects": "This planning pack is not directly deployable and must be translated into vendor-native rules before enforcement.",
+  "tuning_notes": "Use it to drive workshops with AppSec, platform, and operations teams. Convert each baseline control into Cloudflare, AWS WAF, Azure WAF, or appliance-specific artifacts.",
+  "deployment_notes": "Treat this pack as a control checklist and translation target, not as an executable policy. Review it before every new environment rollout.",
+  "monitoring_notes": "Use the pack as a coverage checklist during quarterly reviews and compare it with deployed vendor-specific packs through waf-catalog.",
+  "version": "1.0.0",
+  "maturity": "reviewed",
+  "references": [
+    "https://owasp.org/www-project-top-ten/",
+    "https://owasp.org/www-project-web-security-testing-guide/"
+  ],
+  "generic_controls": [
+    "Protect login, token, MFA, and password reset endpoints",
+    "Restrict administrative and support paths",
+    "Rate limit unauthenticated API traffic",
+    "Block common SQLi, XSS, SSRF, and path traversal payloads",
+    "Define exception ownership and monitoring before block mode"
+  ],
+  "tags": ["generic", "baseline", "planning", "multivendor", "waap"]
+}

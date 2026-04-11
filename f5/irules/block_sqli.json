@@ -1,0 +1,23 @@
+{
+  "name": "F5 BIG-IP iRule — SQL Injection Baseline",
+  "vendor": "f5",
+  "category": "sqli_protection",
+  "app_context": "generic",
+  "objective": "Detect and block common SQL injection tokens in query strings and request payloads at the BIG-IP edge before they reach origin applications.",
+  "risk_mitigated": "SQL injection attempts that can lead to data exposure, authentication bypass, or backend manipulation.",
+  "severity": "critical",
+  "mode": "block",
+  "recommended_for": ["web_apps", "apis", "admin_panels"],
+  "potential_side_effects": "Search endpoints and analytics interfaces that intentionally accept SQL-like operators may require URI-based exclusions.",
+  "tuning_notes": "Start by restricting the iRule to login, search, and form submission paths. Add explicit allow conditions for trusted internal IPs and expected query operators if false positives appear.",
+  "deployment_notes": "Attach to a staging virtual server first, review triggered requests for at least 72 hours, and only then enable on production listeners with a documented rollback path.",
+  "monitoring_notes": "Track request blocks by URI, source IP, and pool member. Investigate bursts against login and search routes separately from low-volume admin probes.",
+  "version": "1.0.0",
+  "maturity": "reviewed",
+  "references": [
+    "https://owasp.org/www-project-top-ten/2021/A03_2021-Injection",
+    "https://clouddocs.f5.com/api/irules/"
+  ],
+  "f5_irule": "when HTTP_REQUEST {\n    set lower_uri [string tolower [HTTP::uri]]\n    set query [string tolower [HTTP::query]]\n    if {[regexp {(union[[:space:]]+select|insert[[:space:]]+into|drop[[:space:]]+table|'[[:space:]]+or[[:space:]]+1=1|--|/\\*)} $query]} {\n        log local0. \"WAF SQLi baseline matched for [IP::client_addr] on $lower_uri\"\n        HTTP::respond 403 content \"Request blocked by security policy\"\n        event disable all\n    }\n  }",
+  "tags": ["f5", "big-ip", "irule", "sqli", "owasp-a03"]
+}

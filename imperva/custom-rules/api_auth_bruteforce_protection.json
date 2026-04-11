@@ -1,0 +1,36 @@
+{
+  "name": "Imperva Custom Rule — API Authentication Brute Force Protection",
+  "vendor": "imperva",
+  "category": "authentication_protection",
+  "app_context": "api",
+  "objective": "Apply a defensive Imperva baseline for repeated authentication attempts against API login, token, and session endpoints.",
+  "risk_mitigated": "Credential stuffing and brute-force traffic against authentication APIs that can lead to account takeover and operational disruption.",
+  "severity": "high",
+  "mode": "block",
+  "recommended_for": ["apis", "mobile_backends", "auth_flows"],
+  "potential_side_effects": "Shared NAT clients, QA automation, or trusted partner integrations may trigger thresholds if exemptions are not defined carefully.",
+  "tuning_notes": "Start with alert or monitor mode where available. Apply separate thresholds for public login, MFA verification, and token refresh endpoints to avoid over-blocking trusted traffic.",
+  "deployment_notes": "Validate threshold logic using Imperva event logs and sampled requests before changing the rule action to a hard block in production.",
+  "monitoring_notes": "Track top source IPs, targeted authentication paths, blocked user-agents, and burst timing. Correlate with identity telemetry for failed logins.",
+  "version": "1.0.0",
+  "maturity": "reviewed",
+  "references": [
+    "https://owasp.org/www-project-top-ten/2021/A07_2021-Identification_and_Authentication_Failures",
+    "https://www.imperva.com/learn/application-security/brute-force-attack/"
+  ],
+  "imperva_rule": {
+    "policyType": "custom",
+    "action": "block",
+    "match": {
+      "httpMethod": ["POST"],
+      "paths": ["/login", "/signin", "/api/auth", "/oauth/token", "/session"],
+      "rateLimit": {
+        "requests": 10,
+        "windowSeconds": 60,
+        "by": "sourceIp"
+      }
+    },
+    "notes": "Scope by hostname or API service group where possible and prefer a short observation period before enforcement."
+  },
+  "tags": ["imperva", "api", "authentication", "credential-stuffing", "bruteforce"]
+}

@@ -1,0 +1,31 @@
+{
+  "name": "Check Point WAF Policy — Administrative Surface Restriction",
+  "vendor": "checkpoint",
+  "category": "access_control",
+  "app_context": "admin_panel",
+  "objective": "Restrict access to administrative paths and sensitive support endpoints by combining trusted source controls with explicit URI matching.",
+  "risk_mitigated": "Exposure of admin interfaces to broad internet traffic, scanning, and opportunistic credential attacks.",
+  "severity": "high",
+  "mode": "block",
+  "recommended_for": ["admin_panels", "backoffice", "support_portals"],
+  "potential_side_effects": "Remote administrators and third-party support teams may be blocked if their access ranges or jump hosts are not modeled correctly.",
+  "tuning_notes": "Keep allowlists narrowly scoped and separate VPN, office, and privileged access broker ranges. Pair the policy with authentication telemetry and admin login rate limiting.",
+  "deployment_notes": "Roll out first on read-only or lower-risk admin surfaces, validate on real operator workflows, and document the emergency bypass process before production enforcement.",
+  "monitoring_notes": "Monitor blocks against /admin, /manage, /backoffice, and /support URLs. Investigate spikes in denied requests from unfamiliar ASNs or cloud providers.",
+  "version": "1.0.0",
+  "maturity": "reviewed",
+  "references": [
+    "https://owasp.org/www-project-top-ten/2021/A01_2021-Broken_Access_Control",
+    "https://sc1.checkpoint.com/documents/"
+  ],
+  "checkpoint_policy": {
+    "action": "block",
+    "match": {
+      "paths": ["/admin", "/manage", "/backoffice", "/support"],
+      "methods": ["GET", "POST"],
+      "sourceProfiles": ["corporate-vpn", "privileged-access-broker"]
+    },
+    "fallback": "deny_if_not_in_allow_profile"
+  },
+  "tags": ["checkpoint", "admin-surface", "access-control", "owasp-a01"]
+}

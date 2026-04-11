@@ -2,7 +2,7 @@
 
 [![License: CC%20BY%204.0](https://img.shields.io/badge/License-CC%20BY%204.0-yellow.svg)](LICENSE)
 [![Status: Active Development](https://img.shields.io/badge/Status-Active%20Development-blue.svg)]()
-[![Vendors: 7](https://img.shields.io/badge/Vendors-7-green.svg)]()
+[![Platforms: 10](https://img.shields.io/badge/Platforms-10-green.svg)]()
 [![Packs: Growing](https://img.shields.io/badge/Packs-Growing-orange.svg)]()
 
 > A library of reusable, well-documented defensive WAF rule packs for Cloudflare, AWS WAF, Azure WAF, F5, FortiWeb, Imperva, and Check Point. Each pack ships with metadata, deployment notes, tuning guidance, and Terraform examples.
@@ -31,10 +31,13 @@ This is not a product — it is a practitioner's toolkit. Packs should always be
 | **Cloudflare** | WAF rules, rate limits, bot rules, security headers, Transform Rules, Terraform |
 | **AWS WAF** | WebACL with managed rule groups, standalone IP reputation and Log4Shell packs, custom rules, Terraform |
 | **Azure WAF** | Front Door policy, Application Gateway policy |
-| **F5 BIG-IP** | iRules and security policy templates *(planned)* |
-| **FortiWeb** | Signature rule export templates *(planned)* |
-| **Imperva** | Custom rule JSON templates *(planned)* |
-| **Check Point** | WAF policy baseline *(planned)* |
+| **F5 BIG-IP** | SQLi and XSS iRule starter packs for enterprise ADC workflows |
+| **FortiWeb** | Path traversal signature baseline for policy-package rollouts |
+| **Imperva** | API authentication brute-force custom rule template |
+| **Check Point** | Administrative surface restriction policy baseline |
+| **ModSecurity** | Export tooling for reusable rate-limit stubs |
+| **NGINX** | Export tooling for reusable rate-limit stubs |
+| **Generic** | Shared metadata schema, cataloging, and vendor-agnostic planning |
 
 ---
 
@@ -85,10 +88,25 @@ waf-defense-rulepacks/
 │   └── terraform/
 ├── azure-waf/
 │   ├── front_door_policy.json
-│   └── app_gateway_policy.json
+│   ├── app_gateway_policy.json
+│   └── custom-rules/
+├── checkpoint/
+│   └── policies/
+├── f5/
+│   └── irules/
+├── fortiweb/
+│   └── signatures/
+├── generic/
+│   └── rules/
+├── imperva/
+│   └── custom-rules/
+├── modsecurity/
+│   └── rules/
+├── nginx/
+│   └── rules/
 ├── shared/
 │   ├── schemas/          # JSON Schema for pack validation
-│   └── validators/       # Python pack validator script
+│   └── validators/       # Validation and catalog helpers
 ├── policies/             # High-level YAML policy packs
 ├── docs/                 # Deployment guides and checklists
 └── training/             # Tutorials and labs
@@ -133,7 +151,16 @@ python shared/validators/validate_pack.py --all
 pytest -q
 ```
 
-### 6. Evaluate higher-risk request patterns locally
+### 6. Map coverage before you deploy
+
+```bash
+waf-catalog --repo-root . --format summary
+waf-catalog --repo-root . --format markdown --output reports/catalog.md
+```
+
+This gives you a quick inventory of coverage by vendor, category, and maturity before you decide what to deploy or expand next.
+
+### 7. Evaluate higher-risk request patterns locally
 
 The repository also ships Python-based defensive analyzers for classes that are
 hard to express cleanly in vendor JSON alone. For example, the host header pack
@@ -167,7 +194,7 @@ PY
 ### Cloudflare (Terraform)
 
 ```hcl
-module "k1n_sqli_protection" {
+module "waf_sqli_protection" {
   source  = "./cloudflare/terraform"
   zone_id = var.zone_id
   mode    = "log"  # Start in log mode
@@ -212,6 +239,8 @@ The host header attack detector is available at [`shared/rulepacks/host_header_a
 - IP-literal overrides against canonical domain-based routing
 
 The Cloudflare RFI pack is available at [`cloudflare/waf-rules/block_remote_file_inclusion.json`](cloudflare/waf-rules/block_remote_file_inclusion.json) and blocks file-loading parameters that point to external HTTP, HTTPS, FTP, protocol-relative, or percent-encoded remote resources. Deploy it in log mode first on CMS, import, and template-rendering paths before enabling block mode.
+
+Use [`docs/waf-landscape.md`](docs/waf-landscape.md) to compare WAF platform types and [`docs/review-checklists/vendor-selection.md`](docs/review-checklists/vendor-selection.md) to structure product selection and rollout decisions.
 
 ---
 

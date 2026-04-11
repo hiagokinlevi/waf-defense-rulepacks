@@ -40,9 +40,11 @@ This document outlines the planned evolution of waf-defense-rulepacks. Items are
 - [x] Host header poisoning / routing override analysis pack
 - [x] AWS WAF: IP reputation rule (using AWS Managed IP reputation list)
 - [x] AWS WAF: Log4Shell virtual patch pack
-- [ ] F5 BIG-IP: iRules for SQLi and XSS
+- [x] F5 BIG-IP: iRules for SQLi and XSS
 - [ ] F5 BIG-IP: ASM policy export template
-- [ ] Imperva: Custom rule JSON templates
+- [x] Imperva: Custom rule JSON templates
+- [x] FortiWeb: Path traversal signature baseline
+- [x] Check Point: Administrative surface restriction baseline
 - [ ] Deployment guide: Azure WAF
 - [ ] Deployment guide: F5
 
@@ -58,6 +60,7 @@ This document outlines the planned evolution of waf-defense-rulepacks. Items are
 - [ ] GitHub Actions CI workflow: validate all packs on PR
 - [ ] Automated maturity promotion: `draft` → `reviewed` via PR review checklist
 - [ ] SARIF output from validator for GitHub Security tab integration
+- [x] CLI catalog: inventory packs by vendor, category, and maturity
 
 ---
 
@@ -69,7 +72,7 @@ This document outlines the planned evolution of waf-defense-rulepacks. Items are
 - [ ] Cloudflare compiler: generic → Cloudflare expression
 - [ ] AWS WAF compiler: generic → AWS WAF statement JSON
 - [ ] Azure WAF compiler: generic → Azure WAF custom rule
-- [ ] CLI tool: `k1n-pack-compiler`
+- [ ] CLI tool: `waf-pack-compiler`
 
 ---
 

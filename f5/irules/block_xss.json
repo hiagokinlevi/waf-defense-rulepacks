@@ -1,0 +1,23 @@
+{
+  "name": "F5 BIG-IP iRule — XSS Baseline",
+  "vendor": "f5",
+  "category": "xss_protection",
+  "app_context": "generic",
+  "objective": "Detect and block common cross-site scripting payload markers in URI and query components with an F5 BIG-IP iRule baseline.",
+  "risk_mitigated": "Reflected and stored XSS payload delivery against forms, search inputs, and administrative interfaces.",
+  "severity": "high",
+  "mode": "block",
+  "recommended_for": ["web_apps", "admin_panels", "cms"],
+  "potential_side_effects": "Endpoints that legitimately carry HTML fragments or rich text may need scoped exclusions or a log-first rollout.",
+  "tuning_notes": "Limit early deployment to unauthenticated routes and admin entry points. Exclude known-safe WYSIWYG or content management paths after observing traffic.",
+  "deployment_notes": "Deploy in a validation window on non-production listeners or mirrored traffic where possible. Promote gradually by hostname or application pool.",
+  "monitoring_notes": "Review matches that include encoded angle brackets, script tags, or inline event handlers. Compare block volume with application error rates during rollout.",
+  "version": "1.0.0",
+  "maturity": "reviewed",
+  "references": [
+    "https://owasp.org/www-community/attacks/xss/",
+    "https://clouddocs.f5.com/api/irules/"
+  ],
+  "f5_irule": "when HTTP_REQUEST {\n    set lower_uri [string tolower [HTTP::uri]]\n    if {[regexp {(<script|%3cscript|javascript:|onerror=|onload=|<img)} $lower_uri]} {\n        log local0. \"WAF XSS baseline matched for [IP::client_addr] on $lower_uri\"\n        HTTP::respond 403 content \"Request blocked by security policy\"\n        event disable all\n    }\n  }",
+  "tags": ["f5", "big-ip", "irule", "xss", "owasp-a03"]
+}

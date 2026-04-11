@@ -1,0 +1,28 @@
+{
+  "name": "FortiWeb Signature — Path Traversal Baseline",
+  "vendor": "fortiweb",
+  "category": "path_traversal",
+  "app_context": "generic",
+  "objective": "Detect and block common path traversal payloads in URI, query string, and encoded parameter variants using a FortiWeb baseline signature profile.",
+  "risk_mitigated": "Directory traversal attempts that target sensitive files, templates, or internal application paths.",
+  "severity": "high",
+  "mode": "block",
+  "recommended_for": ["web_apps", "cms", "admin_panels"],
+  "potential_side_effects": "File-management and content export endpoints may need exclusions when legitimate relative path patterns are expected.",
+  "tuning_notes": "Focus initial rollout on public routes and administrative file access paths. Exclude internal-only upload handlers or packaged content paths after validation.",
+  "deployment_notes": "Import into a staging FortiWeb policy package first and review attack logs before enabling production enforcement.",
+  "monitoring_notes": "Watch for repeated ../, ..%2f, and encoded backslash variants by source IP and user-agent. Rising match volume often correlates with opportunistic scanning.",
+  "version": "1.0.0",
+  "maturity": "reviewed",
+  "references": [
+    "https://owasp.org/www-community/attacks/Path_Traversal",
+    "https://docs.fortinet.com/product/fortiweb"
+  ],
+  "fortiweb_signature": {
+    "action": "alert_deny",
+    "targets": ["uri", "query", "body"],
+    "patterns": ["../", "..%2f", "..\\\\", "%2e%2e%2f", "%252e%252e%252f"],
+    "recommended_scope": ["public_apps", "admin_surfaces"]
+  },
+  "tags": ["fortiweb", "path-traversal", "directory-traversal", "owasp-a01"]
+}

@@ -71,6 +71,8 @@ See the [README](../README.md) for a quick start guide.
 For vendor-specific deployment, see:
 - [Cloudflare Deployment Guide](deployment-guides/cloudflare.md)
 - [AWS WAF Deployment Guide](deployment-guides/aws_waf.md)
+- [WAF Landscape](waf-landscape.md)
+- [Vendor Selection Checklist](review-checklists/vendor-selection.md)
 
 AWS WAF teams that do not need the full baseline WebACL can start with the
 standalone managed-rule packs under `aws-waf/rules/`, including the IP

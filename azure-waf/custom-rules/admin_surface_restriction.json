@@ -1,0 +1,40 @@
+{
+  "name": "Azure WAF Custom Rule — Administrative Surface Restriction",
+  "vendor": "azure-waf",
+  "category": "access_control",
+  "app_context": "admin_panel",
+  "objective": "Restrict Azure WAF protected administrative routes to approved source ranges and trusted operating channels.",
+  "risk_mitigated": "Public exposure of management and support paths that increases scanning, credential attack, and unauthorized access risk.",
+  "severity": "high",
+  "mode": "block",
+  "recommended_for": ["admin_panels", "backoffice", "support_portals"],
+  "potential_side_effects": "Remote administrators and outsourced support teams may require explicit source range allowlists or privileged access routing.",
+  "tuning_notes": "Scope the rule to exact admin paths and maintain source ranges through IaC, not ad hoc dashboard edits. Keep staging and production allowlists separate.",
+  "deployment_notes": "Deploy in Detection mode first through Front Door or Application Gateway custom rules, then move to Prevention after validating all operational admin flows.",
+  "monitoring_notes": "Monitor blocked requests for /admin, /manage, /backoffice, and partner support paths. Review requests by source ASN and user-agent during rollout.",
+  "version": "1.0.0",
+  "maturity": "reviewed",
+  "references": [
+    "https://learn.microsoft.com/en-us/azure/web-application-firewall/",
+    "https://owasp.org/www-project-top-ten/2021/A01_2021-Broken_Access_Control"
+  ],
+  "azure_custom_rule": {
+    "action": "Block",
+    "priority": 100,
+    "matchConditions": [
+      {
+        "matchVariable": "RequestUri",
+        "operator": "BeginsWith",
+        "matchValue": ["/admin", "/manage", "/backoffice", "/support"],
+        "transforms": ["Lowercase"]
+      },
+      {
+        "matchVariable": "RemoteAddr",
+        "operator": "IPMatch",
+        "negateCondition": true,
+        "matchValue": ["10.0.0.0/8", "192.168.0.0/16"]
+      }
+    ]
+  },
+  "tags": ["azure-waf", "admin-surface", "access-control", "owasp-a01"]
+}
