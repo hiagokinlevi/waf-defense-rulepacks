@@ -34,7 +34,7 @@ Review pack → Deploy in Log mode → Validate (72h) → Switch to Block → Mo
 
 From `cloudflare/waf-rules/block_sqli.json`, copy the `cloudflare_expression` field.
 
-- **Rule name**: `k1N SQLi Protection v1.0`
+- **Rule name**: `SQLi Protection v1.0`
 - **Expression**: paste the expression
 - **Action**: **Log** (not Block — start in log mode)
 - **Status**: Enabled

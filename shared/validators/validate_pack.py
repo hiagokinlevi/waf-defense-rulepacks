@@ -2,7 +2,7 @@
 """
 WAF Pack Validator
 ==================
-Validates that all pack JSON files conform to the k1N pack metadata schema.
+Validates that all pack JSON files conform to the repository pack metadata schema.
 Reports missing required fields, invalid enum values, and JSON syntax errors.
 
 Usage:
@@ -190,7 +190,7 @@ def should_skip(path: Path) -> bool:
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Validate k1N WAF pack JSON files against the pack metadata schema",
+        description="Validate WAF pack JSON files against the pack metadata schema",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:

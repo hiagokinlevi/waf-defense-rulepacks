@@ -1,1 +1,1 @@
-"""Shared utilities for k1N WAF rulepacks."""
+"""Shared utilities for WAF rulepacks."""

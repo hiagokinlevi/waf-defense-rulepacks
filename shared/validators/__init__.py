@@ -1,1 +1,1 @@
-"""Validation helpers for k1N WAF rulepacks."""
+"""Validation helpers for WAF rulepacks."""
