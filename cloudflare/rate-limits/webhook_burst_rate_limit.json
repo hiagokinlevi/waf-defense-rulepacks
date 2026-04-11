@@ -1,0 +1,37 @@
+{
+  "name": "Webhook Burst Protection Rate Limit",
+  "vendor": "cloudflare",
+  "category": "rate_limiting",
+  "app_context": "api",
+  "objective": "Rate limit high-volume webhook bursts on internet-facing callback endpoints to reduce replay floods and unauthenticated abuse.",
+  "risk_mitigated": "Webhook endpoint flooding, callback replay storms, and denial of service against asynchronous processing paths.",
+  "severity": "medium",
+  "mode": "log",
+  "recommended_for": ["apis", "microservices", "cloud_hosted"],
+  "potential_side_effects": "Legitimate provider retries can arrive in bursts during upstream incidents, especially from payment and messaging platforms.",
+  "tuning_notes": "Set provider-specific exceptions only after measuring normal retry behavior. Keep trusted provider IPs and signatures outside the rate limit where supported by your architecture.",
+  "deployment_notes": "Start in log mode and scope the rule to callback paths such as /webhooks and /callbacks. Move to managed challenge or block only after understanding provider retry patterns and signature validation coverage.",
+  "monitoring_notes": "Monitor bursts by path, ASN, and response status. Correlate Cloudflare events with application-side signature verification failures and queue latency spikes.",
+  "version": "1.0.0",
+  "maturity": "reviewed",
+  "references": [
+    "https://cheatsheetseries.owasp.org/cheatsheets/Webhook_Security_Guidelines.html",
+    "https://developers.cloudflare.com/waf/rate-limiting-rules/"
+  ],
+  "cloudflare_rate_limit_config": {
+    "description": "Webhook callback burst visibility baseline",
+    "match": {
+      "request": {
+        "methods": ["POST"],
+        "url_pattern": "*/webhook*|*/webhooks*|*/callback*|*/callbacks*"
+      }
+    },
+    "threshold": 120,
+    "period": 60,
+    "action": {
+      "mode": "log"
+    }
+  },
+  "paths_to_cover": ["/webhook", "/webhooks", "/callback", "/callbacks", "/api/webhooks/provider"],
+  "tags": ["webhooks", "burst-protection", "callback-security", "api", "medium"]
+}

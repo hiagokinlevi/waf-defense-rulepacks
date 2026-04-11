@@ -1,0 +1,90 @@
+{
+  "name": "AWS WAF — GraphQL Introspection Guard",
+  "vendor": "aws-waf",
+  "category": "api_protection",
+  "app_context": "api",
+  "objective": "Detect GraphQL introspection and schema enumeration requests on production GraphQL endpoints using AWS WAF regex matching and body inspection.",
+  "risk_mitigated": "Schema discovery that accelerates abuse of hidden GraphQL operations, weak authorization paths, and overly permissive object relationships.",
+  "severity": "high",
+  "mode": "count",
+  "recommended_for": ["apis", "graphql", "web_apps"],
+  "potential_side_effects": "Developer tooling, contract testing, and internal schema validation can legitimately trigger the rule if production and staging are not clearly separated.",
+  "tuning_notes": "Deploy in Count mode first. Exclude staging hostnames, trusted CI/CD source ranges, or signed internal tooling before moving to Block. Keep introspection disabled at the application layer where possible.",
+  "deployment_notes": "Attach this rule ahead of generic managed rule groups so introspection attempts are visible as a first-class signal. Requires body inspection enabled for the associated WebACL resource type.",
+  "monitoring_notes": "Review sampled requests and CloudWatch metrics for repeated introspection probes, suspicious user-agents, and unexpected production clients. Correlate with application-side GraphQL auditing.",
+  "version": "1.0.0",
+  "maturity": "reviewed",
+  "references": [
+    "https://graphql.org/learn/introspection/",
+    "https://cheatsheetseries.owasp.org/cheatsheets/GraphQL_Cheat_Sheet.html"
+  ],
+  "aws_waf_rule": {
+    "Name": "ProtectGraphQLIntrospection",
+    "Priority": 5,
+    "Action": {
+      "Count": {}
+    },
+    "VisibilityConfig": {
+      "SampledRequestsEnabled": true,
+      "CloudWatchMetricsEnabled": true,
+      "MetricName": "ProtectGraphQLIntrospection"
+    },
+    "Statement": {
+      "AndStatement": {
+        "Statements": [
+          {
+            "OrStatement": {
+              "Statements": [
+                {
+                  "ByteMatchStatement": {
+                    "SearchString": "/graphql",
+                    "FieldToMatch": {
+                      "UriPath": {}
+                    },
+                    "TextTransformations": [
+                      {
+                        "Priority": 0,
+                        "Type": "LOWERCASE"
+                      }
+                    ],
+                    "PositionalConstraint": "CONTAINS"
+                  }
+                },
+                {
+                  "ByteMatchStatement": {
+                    "SearchString": "/api/graphql",
+                    "FieldToMatch": {
+                      "UriPath": {}
+                    },
+                    "TextTransformations": [
+                      {
+                        "Priority": 0,
+                        "Type": "LOWERCASE"
+                      }
+                    ],
+                    "PositionalConstraint": "CONTAINS"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "RegexMatchStatement": {
+              "RegexString": "(?i)(__schema|__type|IntrospectionQuery)",
+              "FieldToMatch": {
+                "Body": {}
+              },
+              "TextTransformations": [
+                {
+                  "Priority": 0,
+                  "Type": "URL_DECODE"
+                }
+              ]
+            }
+          }
+        ]
+      }
+    }
+  },
+  "tags": ["aws-waf", "graphql", "schema-enumeration", "api-protection", "high"]
+}

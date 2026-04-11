@@ -28,8 +28,8 @@ This is not a product — it is a practitioner's toolkit. Packs should always be
 
 | Vendor | Coverage |
 |---|---|
-| **Cloudflare** | WAF rules, rate limits, bot rules, security headers, Transform Rules, Terraform |
-| **AWS WAF** | WebACL with managed rule groups, standalone IP reputation and Log4Shell packs, custom rules, Terraform |
+| **Cloudflare** | WAF rules, API protections, GraphQL and operational-surface packs, rate limits, bot rules, security headers, Transform Rules, Terraform |
+| **AWS WAF** | WebACL with managed rule groups, standalone IP reputation and Log4Shell packs, API and GraphQL packs, access-control packs, rate limits, Bot Control, Terraform |
 | **Azure WAF** | Front Door policy, Application Gateway policy |
 | **F5 BIG-IP** | SQLi and XSS iRule starter packs for enterprise ADC workflows |
 | **FortiWeb** | Path traversal signature baseline for policy-package rollouts |
@@ -203,6 +203,18 @@ module "waf_sqli_protection" {
 
 See [`cloudflare/terraform/main.tf`](cloudflare/terraform/main.tf) for the full module.
 
+Recommended Cloudflare expansion material:
+
+- [`cloudflare/waf-rules/protect_graphql_introspection.json`](cloudflare/waf-rules/protect_graphql_introspection.json)
+- [`cloudflare/waf-rules/protect_debug_and_actuator_endpoints.json`](cloudflare/waf-rules/protect_debug_and_actuator_endpoints.json)
+- [`cloudflare/rate-limits/password_reset_rate_limit.json`](cloudflare/rate-limits/password_reset_rate_limit.json)
+- [`cloudflare/rate-limits/webhook_burst_rate_limit.json`](cloudflare/rate-limits/webhook_burst_rate_limit.json)
+- [`cloudflare/bot-rules/login_js_challenge_low_score.json`](cloudflare/bot-rules/login_js_challenge_low_score.json)
+- [`cloudflare/examples/protect_public_api.md`](cloudflare/examples/protect_public_api.md)
+- [`docs/deployment-guides/cloudflare_api_security.md`](docs/deployment-guides/cloudflare_api_security.md)
+- [`docs/review-checklists/cloudflare_production_rollout.md`](docs/review-checklists/cloudflare_production_rollout.md)
+- [`training/tutorials/cloudflare_zero_downtime_rollout.md`](training/tutorials/cloudflare_zero_downtime_rollout.md)
+
 ### AWS WAF
 
 ```bash
@@ -210,6 +222,20 @@ aws wafv2 create-web-acl --cli-input-json file://aws-waf/managed_rule_groups.jso
 ```
 
 See [`docs/deployment-guides/aws_waf.md`](docs/deployment-guides/aws_waf.md) for step-by-step instructions.
+
+Recommended AWS WAF expansion material:
+
+- [`aws-waf/rules/admin_surface_allowlist.json`](aws-waf/rules/admin_surface_allowlist.json)
+- [`aws-waf/rules/password_reset_rate_limit.json`](aws-waf/rules/password_reset_rate_limit.json)
+- [`aws-waf/rules/graphql_introspection_guard.json`](aws-waf/rules/graphql_introspection_guard.json)
+- [`aws-waf/rules/api_burst_rate_limit.json`](aws-waf/rules/api_burst_rate_limit.json)
+- [`aws-waf/rules/debug_endpoint_restriction.json`](aws-waf/rules/debug_endpoint_restriction.json)
+- [`aws-waf/rules/bot_control_managed_group.json`](aws-waf/rules/bot_control_managed_group.json)
+- [`aws-waf/examples/protect_alb_api.md`](aws-waf/examples/protect_alb_api.md)
+- [`aws-waf/examples/protect_cloudfront_app.md`](aws-waf/examples/protect_cloudfront_app.md)
+- [`docs/deployment-guides/aws_waf_api_protection.md`](docs/deployment-guides/aws_waf_api_protection.md)
+- [`docs/review-checklists/aws_waf_production_rollout.md`](docs/review-checklists/aws_waf_production_rollout.md)
+- [`training/tutorials/aws_waf_managed_rules_baseline.md`](training/tutorials/aws_waf_managed_rules_baseline.md)
 
 The standalone AWS IP reputation pack is available at
 [`aws-waf/rules/ip_reputation_managed_group.json`](aws-waf/rules/ip_reputation_managed_group.json).
@@ -242,7 +268,7 @@ The Cloudflare RFI pack is available at [`cloudflare/waf-rules/block_remote_file
 
 The Cloudflare API abuse and excessive data exposure pack is available at [`cloudflare/waf-rules/block_api_abuse_excessive_data_exposure.json`](cloudflare/waf-rules/block_api_abuse_excessive_data_exposure.json). It is designed for public API surfaces that need extra scrutiny around bulk field expansion, export-style endpoints, oversized pagination hints, and GraphQL introspection probes. Start with unauthenticated or partner-facing API routes in log mode and document any exclusions for BI exports, internal analytics consumers, and developer tooling before enabling block mode.
 
-Use [`docs/waf-landscape.md`](docs/waf-landscape.md) to compare WAF platform types and [`docs/review-checklists/vendor-selection.md`](docs/review-checklists/vendor-selection.md) to structure product selection and rollout decisions.
+Use [`docs/waf-landscape.md`](docs/waf-landscape.md) to compare WAF platform types, [`docs/review-checklists/vendor-selection.md`](docs/review-checklists/vendor-selection.md) to structure product selection and rollout decisions, and the vendor-specific rollout checklists in [`docs/review-checklists/`](docs/review-checklists/) when promoting AWS WAF or Cloudflare controls into production.
 
 ---
 

@@ -183,3 +183,15 @@ fields httpRequest.uri
 | sort blockCount desc
 | limit 20
 ```
+
+---
+
+## Recommended Deep-Dive Material
+
+For broader AWS WAF coverage beyond the initial baseline, continue with:
+
+- [`aws-waf/examples/protect_alb_api.md`](../../aws-waf/examples/protect_alb_api.md)
+- [`aws-waf/examples/protect_cloudfront_app.md`](../../aws-waf/examples/protect_cloudfront_app.md)
+- [`docs/deployment-guides/aws_waf_api_protection.md`](aws_waf_api_protection.md)
+- [`docs/review-checklists/aws_waf_production_rollout.md`](../review-checklists/aws_waf_production_rollout.md)
+- [`training/tutorials/aws_waf_managed_rules_baseline.md`](../../training/tutorials/aws_waf_managed_rules_baseline.md)

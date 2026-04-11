@@ -1,0 +1,81 @@
+{
+  "name": "AWS WAF — Public API Burst Rate Limit",
+  "vendor": "aws-waf",
+  "category": "rate_limiting",
+  "app_context": "api",
+  "objective": "Rate limit high-volume bursts on public API paths so scanning, brute-force enumeration, and accidental client storms are contained before they degrade backend capacity.",
+  "risk_mitigated": "API enumeration, unauthenticated request floods, and sudden burst patterns that overwhelm origin systems or expose excessive object discovery surfaces.",
+  "severity": "medium",
+  "mode": "count",
+  "recommended_for": ["apis", "mobile_backend", "microservices"],
+  "potential_side_effects": "Legitimate mobile app release spikes, integration retries, and partner batch jobs can trip a burst threshold if traffic baselines are not known.",
+  "tuning_notes": "Pair this with client identity, API gateway quotas, and application-level auth protections. Start in Count mode and set endpoint-specific thresholds if one path receives materially more traffic than others.",
+  "deployment_notes": "Attach to unauthenticated or partner-facing APIs before expensive backend workflows. Keep trusted internal paths, health probes, and callback endpoints outside the scope-down statement if they have separate controls.",
+  "monitoring_notes": "Review CloudWatch metrics by resource and path, then correlate with ALB/API Gateway metrics, 4xx/5xx spikes, and upstream auth failures.",
+  "version": "1.0.0",
+  "maturity": "reviewed",
+  "references": [
+    "https://docs.aws.amazon.com/waf/latest/developerguide/waf-rule-statement-type-rate-based.html",
+    "https://cheatsheetseries.owasp.org/cheatsheets/REST_Security_Cheat_Sheet.html"
+  ],
+  "aws_waf_rule": {
+    "Name": "PublicApiBurstRateLimit",
+    "Priority": 6,
+    "Action": {
+      "Count": {}
+    },
+    "VisibilityConfig": {
+      "SampledRequestsEnabled": true,
+      "CloudWatchMetricsEnabled": true,
+      "MetricName": "PublicApiBurstRateLimit"
+    },
+    "Statement": {
+      "RateBasedStatement": {
+        "Limit": 1000,
+        "EvaluationWindowSec": 300,
+        "AggregateKeyType": "IP",
+        "ScopeDownStatement": {
+          "AndStatement": {
+            "Statements": [
+              {
+                "ByteMatchStatement": {
+                  "SearchString": "/api/",
+                  "FieldToMatch": {
+                    "UriPath": {}
+                  },
+                  "TextTransformations": [
+                    {
+                      "Priority": 0,
+                      "Type": "LOWERCASE"
+                    }
+                  ],
+                  "PositionalConstraint": "STARTS_WITH"
+                }
+              },
+              {
+                "NotStatement": {
+                  "Statement": {
+                    "ByteMatchStatement": {
+                      "SearchString": "/api/internal/",
+                      "FieldToMatch": {
+                        "UriPath": {}
+                      },
+                      "TextTransformations": [
+                        {
+                          "Priority": 0,
+                          "Type": "LOWERCASE"
+                        }
+                      ],
+                      "PositionalConstraint": "STARTS_WITH"
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      }
+    }
+  },
+  "tags": ["aws-waf", "api", "burst-protection", "rate-limit", "medium"]
+}
