@@ -39,6 +39,7 @@ Usage::
 """
 from __future__ import annotations
 
+import ipaddress
 import re
 import urllib.parse
 from dataclasses import dataclass, field
@@ -71,6 +72,18 @@ _CHECK_WEIGHTS: Dict[str, int] = {
     "SSRF-006": 15,  # URL shortener abuse
     "SSRF-007": 25,  # Internal service hostname
 }
+
+_PRIVATE_IP_NETWORKS = (
+    ipaddress.ip_network("10.0.0.0/8"),
+    ipaddress.ip_network("172.16.0.0/12"),
+    ipaddress.ip_network("192.168.0.0/16"),
+)
+
+_METADATA_IPS = (
+    ipaddress.ip_address("169.254.169.254"),
+    ipaddress.ip_address("169.254.170.2"),
+    ipaddress.ip_address("fd00:ec2::254"),
+)
 
 
 # ---------------------------------------------------------------------------
@@ -142,6 +155,92 @@ _INTERNAL_SERVICE_RE = re.compile(
     r'([:/\\.@$]|$)',
     re.IGNORECASE,
 )
+
+
+def _split_host_port(value: str) -> str:
+    candidate = value.strip().strip("\"'")
+    if "://" in candidate:
+        try:
+            parsed = urllib.parse.urlparse(candidate)
+        except ValueError:
+            parsed = None
+        if parsed is not None and parsed.hostname:
+            return parsed.hostname
+    if candidate.startswith("[") and "]" in candidate:
+        return candidate[1:candidate.index("]")]
+    if candidate.count(":") == 1 and candidate.rsplit(":", 1)[1].isdigit():
+        candidate = candidate.rsplit(":", 1)[0]
+    for separator in ("/", "?", "#"):
+        candidate = candidate.split(separator, 1)[0]
+    return candidate
+
+
+def _parse_ipv4_part(value: str) -> Optional[int]:
+    if not value:
+        return None
+    if value.lower().startswith("0x"):
+        try:
+            return int(value, 16)
+        except ValueError:
+            return None
+    if len(value) > 1 and value.startswith("0"):
+        if any(ch not in "01234567" for ch in value):
+            return None
+        try:
+            return int(value, 8)
+        except ValueError:
+            return None
+    if not value.isdigit():
+        return None
+    try:
+        return int(value, 10)
+    except ValueError:
+        return None
+
+
+def _parse_ipv4_legacy_literal(value: str) -> Optional[ipaddress.IPv4Address]:
+    parts = value.split(".")
+    if not 1 <= len(parts) <= 4:
+        return None
+
+    parsed_parts: list[int] = []
+    for part in parts:
+        parsed = _parse_ipv4_part(part)
+        if parsed is None:
+            return None
+        parsed_parts.append(parsed)
+
+    try:
+        if len(parsed_parts) == 1:
+            if not 0 <= parsed_parts[0] <= 0xFFFFFFFF:
+                return None
+            return ipaddress.IPv4Address(parsed_parts[0])
+        if len(parsed_parts) == 2:
+            first, second = parsed_parts
+            if not 0 <= first <= 0xFF or not 0 <= second <= 0xFFFFFF:
+                return None
+            return ipaddress.IPv4Address((first << 24) | second)
+        if len(parsed_parts) == 3:
+            first, second, third = parsed_parts
+            if not 0 <= first <= 0xFF or not 0 <= second <= 0xFF or not 0 <= third <= 0xFFFF:
+                return None
+            return ipaddress.IPv4Address((first << 24) | (second << 16) | third)
+        if any(not 0 <= part <= 0xFF for part in parsed_parts):
+            return None
+        first, second, third, fourth = parsed_parts
+        return ipaddress.IPv4Address(
+            (first << 24) | (second << 16) | (third << 8) | fourth
+        )
+    except ipaddress.AddressValueError:
+        return None
+
+
+def _target_ip(value: str) -> Optional[ipaddress._BaseAddress]:
+    host = _split_host_port(value)
+    try:
+        return ipaddress.ip_address(host)
+    except ValueError:
+        return _parse_ipv4_legacy_literal(host)
 
 
 # ---------------------------------------------------------------------------
@@ -430,6 +529,21 @@ class SSRFProtectionPack:
                         "validate resolved IPs before making outbound connections."
                     ),
                 )
+        ip = _target_ip(value)
+        if isinstance(ip, ipaddress.IPv4Address) and any(ip in network for network in _PRIVATE_IP_NETWORKS):
+            return SSRFFinding(
+                check_id="SSRF-001",
+                severity="CRITICAL",
+                rule_name="RFC1918 Private IP Address",
+                matched_value=value[:80],
+                param_location=location,
+                recommendation=(
+                    "Reject or sanitise request values that resolve to RFC 1918 "
+                    "private address space (10.x, 172.16-31.x, 192.168.x). "
+                    "Implement an allowlist of permitted destination hosts and "
+                    "validate resolved IPs before making outbound connections."
+                ),
+            )
         return None
 
     def _check_ssrf002_loopback(
@@ -451,6 +565,21 @@ class SSRFProtectionPack:
                         "server's own loopback interface."
                     ),
                 )
+        ip = _target_ip(value)
+        if ip is not None and (ip.is_loopback or ip.is_unspecified):
+            return SSRFFinding(
+                check_id="SSRF-002",
+                severity="CRITICAL",
+                rule_name="Localhost / Loopback Reference",
+                matched_value=value[:80],
+                param_location=location,
+                recommendation=(
+                    "Block any request value referencing loopback addresses "
+                    "(localhost, 127.x.x.x, ::1, 0.0.0.0). Enforce an allowlist "
+                    "of resolvable public hostnames and deny connections to the "
+                    "server's own loopback interface."
+                ),
+            )
         return None
 
     def _check_ssrf003_metadata(
@@ -472,6 +601,21 @@ class SSRFProtectionPack:
                         "outbound connectivity from application servers at the network layer."
                     ),
                 )
+        ip = _target_ip(value)
+        if ip in _METADATA_IPS:
+            return SSRFFinding(
+                check_id="SSRF-003",
+                severity="CRITICAL",
+                rule_name="Cloud Metadata Endpoint",
+                matched_value=value[:80],
+                param_location=location,
+                recommendation=(
+                    "Block requests to cloud instance metadata endpoints "
+                    "(169.254.169.254, 169.254.170.2, metadata.google.internal, "
+                    "fd00:ec2::254). Use IMDSv2 with PUT-based tokens and restrict "
+                    "outbound connectivity from application servers at the network layer."
+                ),
+            )
         return None
 
     def _check_ssrf004_dns_rebind(

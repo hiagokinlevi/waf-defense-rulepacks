@@ -101,6 +101,12 @@ class TestCleanRequest:
         result = _pack().evaluate(_req(query_params={"dns": "8.8.8.8"}))
         assert not _has(result, "SSRF-001")
 
+    def test_public_hex_ip_no_finding(self):
+        result = _pack().evaluate(_req(query_params={"dns": "0x08080808"}))
+        assert not _has(result, "SSRF-001")
+        assert not _has(result, "SSRF-002")
+        assert not _has(result, "SSRF-003")
+
     def test_regular_body_no_finding(self):
         result = _pack().evaluate(
             _req(body='{"action":"search","query":"widgets"}')
@@ -177,6 +183,12 @@ class TestSSRF001PrivateIP:
         )
         assert _has(result, "SSRF-001")
 
+    def test_hex_private_ip_literal_triggers(self):
+        result = _pack().evaluate(
+            _req(query_params={"url": "http://0x0A000001/internal-api"})
+        )
+        assert _has(result, "SSRF-001")
+
     def test_severity_is_critical(self):
         result = _pack().evaluate(_req(query_params={"host": "10.0.0.1"}))
         finding = next(f for f in result.findings if f.check_id == "SSRF-001")
@@ -206,6 +218,10 @@ class TestSSRF002Loopback:
 
     def test_127_0_0_254_triggers(self):
         result = _pack().evaluate(_req(query_params={"server": "127.0.0.254"}))
+        assert _has(result, "SSRF-002")
+
+    def test_decimal_localhost_alias_triggers(self):
+        result = _pack().evaluate(_req(query_params={"url": "http://2130706433/admin"}))
         assert _has(result, "SSRF-002")
 
     def test_ipv6_loopback_triggers(self):
@@ -259,6 +275,10 @@ class TestSSRF003Metadata:
 
     def test_ipv6_metadata_triggers(self):
         result = _pack().evaluate(_req(query_params={"addr": "fd00:ec2::254"}))
+        assert _has(result, "SSRF-003")
+
+    def test_hex_metadata_literal_triggers(self):
+        result = _pack().evaluate(_req(query_params={"url": "http://0xA9FEA9FE/latest/meta-data/"}))
         assert _has(result, "SSRF-003")
 
     def test_severity_is_critical(self):
