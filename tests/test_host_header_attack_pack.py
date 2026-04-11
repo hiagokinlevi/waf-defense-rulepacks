@@ -65,6 +65,11 @@ def test_hho003_metadata_hostname_fires() -> None:
     assert _has(result, "HHO-003")
 
 
+def test_hho003_metadata_hostname_with_trailing_dot_fires() -> None:
+    result = _pack().evaluate(_req(headers={"X-Forwarded-Host": "metadata.google.internal."}))
+    assert _has(result, "HHO-003")
+
+
 def test_hho003_decimal_localhost_alias_fires() -> None:
     result = _pack().evaluate(_req(headers={"Host": "2130706433"}))
     assert _has(result, "HHO-003")
@@ -73,6 +78,18 @@ def test_hho003_decimal_localhost_alias_fires() -> None:
 
 def test_hho003_hex_metadata_alias_fires() -> None:
     result = _pack().evaluate(_req(headers={"Host": "0xA9FEA9FE"}))
+    assert _has(result, "HHO-003")
+    assert result.blocked is True
+
+
+def test_hho003_loopback_host_with_trailing_dot_fires() -> None:
+    result = _pack().evaluate(_req(headers={"Host": "localhost."}))
+    assert _has(result, "HHO-003")
+    assert result.blocked is True
+
+
+def test_hho003_metadata_ip_with_trailing_dot_fires() -> None:
+    result = _pack().evaluate(_req(headers={"Host": "169.254.169.254."}))
     assert _has(result, "HHO-003")
     assert result.blocked is True
 
@@ -101,6 +118,13 @@ def test_hho005_same_external_host_does_not_fire() -> None:
     assert not _has(result, "HHO-005")
 
 
+def test_hho005_same_external_host_with_trailing_dot_does_not_fire() -> None:
+    result = _pack().evaluate(
+        _req(headers={"Host": "app.example.com", "X-Forwarded-Host": "app.example.com."})
+    )
+    assert not _has(result, "HHO-005")
+
+
 def test_hho006_multiple_values_in_single_header_fire() -> None:
     result = _pack().evaluate(_req(headers={"X-Forwarded-Host": "app.example.com,evil.example.net"}))
     assert _has(result, "HHO-006")
@@ -116,6 +140,13 @@ def test_hho007_ip_literal_override_fires() -> None:
 def test_hho007_hex_public_ip_literal_override_fires() -> None:
     result = _pack().evaluate(
         _req(url="https://portal.example.com/", headers={"Host": "0x08080808"})
+    )
+    assert _has(result, "HHO-007")
+
+
+def test_hho007_public_ip_literal_override_with_trailing_dot_fires() -> None:
+    result = _pack().evaluate(
+        _req(url="https://portal.example.com/", headers={"Host": "8.8.8.8."})
     )
     assert _has(result, "HHO-007")
 

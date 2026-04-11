@@ -161,13 +161,17 @@ def _truncate(value: str) -> str:
     return value[:_MAX_EVIDENCE_LEN] + "..."
 
 
+def _normalise_host_token(value: str) -> str:
+    return value.strip().strip("\"'").lower().rstrip(".")
+
+
 def _normalise_headers(headers: Dict[str, str]) -> Dict[str, str]:
     return {str(name).lower(): str(value) for name, value in headers.items()}
 
 
 def _canonical_host(url: str) -> str:
     try:
-        return (urlparse(url).hostname or "").lower()
+        return _normalise_host_token(urlparse(url).hostname or "")
     except ValueError:
         return ""
 
@@ -185,12 +189,12 @@ def _extract_header_values(headers: Dict[str, str]) -> Dict[str, str]:
 
 
 def _split_host_port(value: str) -> str:
-    candidate = value.strip().strip("\"'").lower()
+    candidate = _normalise_host_token(value)
     if candidate.startswith("[") and "]" in candidate:
-        return candidate[1:candidate.index("]")]
+        return _normalise_host_token(candidate[1:candidate.index("]")])
     if candidate.count(":") == 1 and candidate.rsplit(":", 1)[1].isdigit():
         return candidate.rsplit(":", 1)[0]
-    return candidate
+    return _normalise_host_token(candidate)
 
 
 def _to_ip(value: str) -> Optional[ipaddress._BaseAddress]:
