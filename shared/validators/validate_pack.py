@@ -157,11 +157,27 @@ def _validate_optional_string_list(
     return errors
 
 
+def _is_template_container(pack: dict) -> bool:
+    """Return True when a JSON object is a provider template, not a standalone pack."""
+    return "_k1n_metadata" in pack and not all(field in pack for field in REQUIRED_FIELDS)
+
+
+def is_template_pack_file(pack_path: Path) -> bool:
+    """Detect template/container JSON files that should be skipped by bulk validation."""
+    try:
+        with open(pack_path) as f:
+            pack = json.load(f)
+    except (json.JSONDecodeError, OSError):
+        return False
+
+    return isinstance(pack, dict) and _is_template_container(pack)
+
+
 def validate_pack(
     pack_path: Path,
     schema: dict | None = None,
     verbose: bool = False,
-) -> list[str] | None:
+) -> list[str]:
     """
     Validate a single pack JSON file.
 
@@ -171,8 +187,8 @@ def validate_pack(
         verbose: If True, print detailed information even for valid packs.
 
     Returns:
-        None when the file is a provider template that should be skipped, a list
-        of error message strings for invalid packs, or an empty list for a valid pack.
+        A list of error message strings. An empty list means the pack is valid or
+        a provider template that should be skipped by higher-level tooling.
     """
     errors = []
 
@@ -191,10 +207,10 @@ def validate_pack(
     # Skip container templates that carry repo metadata but are not standalone packs.
     # Examples: AWS/Azure policy templates that embed _k1n_metadata plus provider-
     # specific payload keys rather than the canonical pack fields.
-    if "_k1n_metadata" in pack and not all(field in pack for field in REQUIRED_FIELDS):
+    if _is_template_container(pack):
         if verbose:
             print(f"SKIP {pack_path} — template file with _k1n_metadata, not a standalone pack")
-        return None
+        return []
 
     # --- Step 2: Check required fields ---
     for field in REQUIRED_FIELDS:
@@ -340,10 +356,10 @@ Examples:
             print(f"ERROR: File not found: {pack_path}", file=sys.stderr)
             sys.exit(1)
 
-        errors = validate_pack(pack_path, schema=schema, verbose=args.verbose)
-        if errors is None:
+        if is_template_pack_file(pack_path):
             print(f"SKIP  {pack_path}")
             sys.exit(0)
+        errors = validate_pack(pack_path, schema=schema, verbose=args.verbose)
         if errors:
             print(f"FAIL  {pack_path}")
             for e in errors:
@@ -370,11 +386,11 @@ Examples:
         passed = 0
 
         for pf in sorted(pack_files):
-            errors = validate_pack(pf, schema=schema, verbose=args.verbose)
-            if errors is None:
-                # File was skipped (container file)
+            if is_template_pack_file(pf):
                 skipped += 1
-            elif errors:
+                continue
+            errors = validate_pack(pf, schema=schema, verbose=args.verbose)
+            if errors:
                 print(f"FAIL  {pf.relative_to(repo_root)}")
                 for e in errors:
                     print(f"  - {e}")
