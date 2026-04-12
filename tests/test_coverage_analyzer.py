@@ -65,6 +65,22 @@ def test_header_hardening_covers_a02_and_a05():
     assert "A05" in report.covered_categories
 
 
+def test_security_headers_covers_a02_and_a05():
+    report = analyze_coverage([_pack("security_headers")])
+    assert "A02" in report.covered_categories
+    assert "A05" in report.covered_categories
+
+
+def test_authentication_protection_covers_a07():
+    report = analyze_coverage([_pack("authentication_protection")])
+    assert "A07" in report.covered_categories
+
+
+def test_lfi_rfi_protection_covers_a03():
+    report = analyze_coverage([_pack("lfi_rfi_protection")])
+    assert "A03" in report.covered_categories
+
+
 # ---------------------------------------------------------------------------
 # Mode filtering
 # ---------------------------------------------------------------------------
@@ -87,6 +103,13 @@ def test_challenge_mode_counts_as_active():
     report = analyze_coverage([_pack("rate_limiting", mode="js_challenge")])
     assert report.active_packs == 1
     assert "A07" in report.covered_categories
+
+
+def test_security_headers_log_mode_counts_as_protective():
+    report = analyze_coverage([_pack("security_headers", mode="log")])
+    assert report.active_packs == 1
+    assert "A02" in report.covered_categories
+    assert "A05" in report.covered_categories
 
 
 # ---------------------------------------------------------------------------

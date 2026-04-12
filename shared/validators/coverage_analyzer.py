@@ -12,7 +12,10 @@ Given a directory of pack JSON files (or a list of pack dicts), the analyzer:
 Scoring model:
   - Each OWASP category has a weight (total weights sum to 100)
   - A category is "covered" if at least one deployed pack has an aligned category
-    AND the pack's mode is 'block' or 'challenge' (not just 'log')
+    AND the pack contributes active protection. Most categories require
+    block/challenge-style modes, while response-hardening packs such as
+    security headers can still count when metadata uses 'log' because the
+    underlying control is enforced through a transform rule.
   - Score = sum of weights of covered categories
 
 Usage:
@@ -54,13 +57,15 @@ OWASP_CATEGORIES: list[OwaspCategory] = [
         owasp_id="A02",
         name="Cryptographic Failures",
         weight=8,
-        pack_categories=frozenset({"tls_enforcement", "header_hardening"}),
+        pack_categories=frozenset({"tls_enforcement", "header_hardening", "security_headers"}),
     ),
     OwaspCategory(
         owasp_id="A03",
         name="Injection (SQLi, XSS, etc.)",
         weight=20,
-        pack_categories=frozenset({"sqli_protection", "xss_protection", "command_injection", "injection"}),
+        pack_categories=frozenset(
+            {"sqli_protection", "xss_protection", "command_injection", "injection", "lfi_rfi_protection"}
+        ),
     ),
     OwaspCategory(
         owasp_id="A04",
@@ -72,7 +77,9 @@ OWASP_CATEGORIES: list[OwaspCategory] = [
         owasp_id="A05",
         name="Security Misconfiguration",
         weight=10,
-        pack_categories=frozenset({"header_hardening", "default_credential_protection", "security_misconfiguration"}),
+        pack_categories=frozenset(
+            {"header_hardening", "security_headers", "default_credential_protection", "security_misconfiguration"}
+        ),
     ),
     OwaspCategory(
         owasp_id="A06",
@@ -84,7 +91,9 @@ OWASP_CATEGORIES: list[OwaspCategory] = [
         owasp_id="A07",
         name="Identification and Authentication Failures",
         weight=12,
-        pack_categories=frozenset({"rate_limiting", "brute_force_protection", "credential_stuffing"}),
+        pack_categories=frozenset(
+            {"rate_limiting", "brute_force_protection", "credential_stuffing", "authentication_protection"}
+        ),
     ),
     OwaspCategory(
         owasp_id="A08",
@@ -108,6 +117,10 @@ OWASP_CATEGORIES: list[OwaspCategory] = [
 
 # Modes that count as active blocking (not just observation)
 ACTIVE_MODES = {"block", "challenge", "js_challenge", "managed_challenge"}
+
+# Some controls provide active protection even when pack metadata uses "log"
+# because the underlying WAF primitive is not a request-blocking action.
+NON_BLOCKING_PROTECTIVE_CATEGORIES = {"security_headers"}
 
 
 # ---------------------------------------------------------------------------
@@ -137,7 +150,7 @@ class CoverageReport:
     """Full coverage analysis result."""
 
     packs_analyzed: int
-    active_packs: int               # Packs in block/challenge mode
+    active_packs: int               # Packs contributing active protection to the score
     score: int                       # 0–100 coverage score
     covered_categories: list[str]    # OWASP IDs with coverage
     gaps: list[CoverageGap]          # OWASP IDs with no coverage
@@ -165,6 +178,13 @@ class CoverageReport:
 # ---------------------------------------------------------------------------
 # Analysis logic
 # ---------------------------------------------------------------------------
+
+def _counts_toward_coverage(category: str, mode: str) -> bool:
+    """Return True when a pack meaningfully contributes to protection score."""
+    if mode in ACTIVE_MODES:
+        return True
+    return category in NON_BLOCKING_PROTECTIVE_CATEGORIES and mode == "log"
+
 
 def analyze_coverage(
     source: Path | list[dict],
@@ -227,7 +247,7 @@ def analyze_coverage(
         maturity = pack.get("maturity", "draft")
         name = pack.get("name", "unnamed")
 
-        is_active = mode in ACTIVE_MODES
+        is_active = _counts_toward_coverage(category, mode)
         if is_active:
             active_count += 1
             vendor_breakdown[vendor] = vendor_breakdown.get(vendor, 0) + 1
@@ -237,7 +257,7 @@ def analyze_coverage(
         for owasp_cat in OWASP_CATEGORIES:
             if category in owasp_cat.pack_categories:
                 owasp_contributions.append(owasp_cat.owasp_id)
-                # Only count active (blocking) packs toward coverage
+                # Only count packs that provide active protection toward coverage
                 if is_active:
                     covered[owasp_cat.owasp_id] = True
 
@@ -262,7 +282,7 @@ def analyze_coverage(
 
     _gap_recommendations: dict[str, str] = {
         "A01": "Add admin path protection and path traversal blocking rules",
-        "A02": "Add TLS enforcement headers (HSTS, Content-Security-Policy) via a header-hardening pack",
+        "A02": "Add TLS enforcement headers (HSTS, Content-Security-Policy) via a security-headers pack",
         "A03": "Add SQLi and XSS blocking rules for all ingress points",
         "A04": "Add SSRF mitigation rules to restrict outbound server-side requests",
         "A05": "Add a security headers pack (X-Frame-Options, X-Content-Type-Options, HSTS)",
@@ -302,7 +322,7 @@ def print_report(report: CoverageReport, verbose: bool = False) -> None:
     print(f"  WAF Coverage Analysis Report")
     print(f"{'='*60}")
     print(f"  Score:          {report.score}/100 ({report.rating})")
-    print(f"  Packs analyzed: {report.packs_analyzed} total / {report.active_packs} active (block/challenge)")
+    print(f"  Packs analyzed: {report.packs_analyzed} total / {report.active_packs} protective")
     print(f"  Covered OWASP:  {len(report.covered_categories)}/10 categories")
     print(f"  Gap weight:     {report.gap_weight_total} points uncovered")
 
@@ -317,9 +337,9 @@ def print_report(report: CoverageReport, verbose: bool = False) -> None:
             print(f"         → {gap.recommendation}")
 
     if verbose and report.pack_summaries:
-        print(f"\n  ACTIVE PACK DETAILS:")
+        print(f"\n  PROTECTIVE PACK DETAILS:")
         for ps in report.pack_summaries:
-            if ps.mode in ACTIVE_MODES:
+            if _counts_toward_coverage(ps.category, ps.mode):
                 owasp = ", ".join(ps.owasp_coverage) if ps.owasp_coverage else "unmapped"
                 print(f"    {ps.name[:50]:<50} [{ps.vendor}] covers: {owasp}")
 
