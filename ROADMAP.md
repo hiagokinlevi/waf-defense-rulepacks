@@ -41,7 +41,7 @@ This document outlines the planned evolution of waf-defense-rulepacks. Items are
 - [x] AWS WAF: IP reputation rule (using AWS Managed IP reputation list)
 - [x] AWS WAF: Log4Shell virtual patch pack
 - [x] F5 BIG-IP: iRules for SQLi and XSS
-- [ ] F5 BIG-IP: ASM policy export template
+- [x] F5 BIG-IP: ASM policy export template
 - [x] Imperva: Custom rule JSON templates
 - [x] FortiWeb: Path traversal signature baseline
 - [x] Check Point: Administrative surface restriction baseline

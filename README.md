@@ -31,7 +31,7 @@ This is not a product — it is a practitioner's toolkit. Packs should always be
 | **Cloudflare** | WAF rules, rate limits, bot rules, security headers, Transform Rules, Terraform |
 | **AWS WAF** | WebACL with managed rule groups, standalone IP reputation and Log4Shell packs, custom rules, Terraform |
 | **Azure WAF** | Front Door policy, Application Gateway policy |
-| **F5 BIG-IP** | SQLi and XSS iRule starter packs for enterprise ADC workflows |
+| **F5 BIG-IP** | SQLi and XSS iRule starter packs plus an ASM policy export template for enterprise ADC workflows |
 | **FortiWeb** | Path traversal signature baseline for policy-package rollouts |
 | **Imperva** | API authentication brute-force custom rule template |
 | **Check Point** | Administrative surface restriction policy baseline |
@@ -93,6 +93,7 @@ waf-defense-rulepacks/
 ├── checkpoint/
 │   └── policies/
 ├── f5/
+│   ├── asm/
 │   └── irules/
 ├── fortiweb/
 │   └── signatures/

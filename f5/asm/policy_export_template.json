@@ -1,0 +1,131 @@
+{
+  "_k1n_metadata": {
+    "name": "F5 BIG-IP ASM Policy Export Template — Baseline",
+    "vendor": "f5",
+    "target": "F5 BIG-IP Advanced WAF / ASM",
+    "version": "1.0.0",
+    "maturity": "reviewed",
+    "objective": "Provide a production-safe baseline F5 BIG-IP ASM policy export template for staged rollout of web application protections with transparent-mode defaults and learning enabled.",
+    "deployment_notes": "Import into a staging BIG-IP policy in transparent mode first. Keep signature staging and automatic learning enabled, review suggested policy changes and triggered violations for at least 72 hours, then promote to blocking mode with a documented rollback plan.",
+    "monitoring_notes": "Track attack signature, evasion, HTTP protocol, method, and parameter datatype violations by URL, policy, and source IP. Review learning suggestions daily during rollout and alert on sudden spikes in blocked or alarmed requests.",
+    "references": [
+      "https://clouddocs.f5.com/products/waf-declarative-policy/declarative/",
+      "https://owasp.org/www-project-top-ten/2021/A03_2021-Injection",
+      "https://owasp.org/www-project-top-ten/2021/A01_2021-Broken_Access_Control"
+    ]
+  },
+  "policy": {
+    "name": "k1n_baseline_webapp",
+    "template": {
+      "name": "POLICY_TEMPLATE_FUNDAMENTAL"
+    },
+    "applicationLanguage": "utf-8",
+    "enforcementMode": "transparent",
+    "signature-staging": true,
+    "server-technologies": [
+      {
+        "serverTechnologyName": "Apache"
+      },
+      {
+        "serverTechnologyName": "NGINX"
+      },
+      {
+        "serverTechnologyName": "PHP"
+      },
+      {
+        "serverTechnologyName": "Node.js"
+      }
+    ],
+    "policy-builder": {
+      "learningMode": "automatic",
+      "learningSpeed": "medium"
+    },
+    "signature-sets": [
+      {
+        "name": "Command Execution Signatures",
+        "alarm": true,
+        "block": false
+      },
+      {
+        "name": "Cross Site Scripting Signatures",
+        "alarm": true,
+        "block": false
+      },
+      {
+        "name": "SQL Injection Signatures",
+        "alarm": true,
+        "block": false
+      }
+    ],
+    "blocking-settings": {
+      "violations": [
+        {
+          "name": "VIOL_ATTACK_SIGNATURE_DETECTED",
+          "alarm": true,
+          "block": false,
+          "learn": true
+        },
+        {
+          "name": "VIOL_EVASION_DETECTED",
+          "alarm": true,
+          "block": false,
+          "learn": true
+        },
+        {
+          "name": "VIOL_HTTP_PROTOCOL",
+          "alarm": true,
+          "block": false,
+          "learn": true
+        },
+        {
+          "name": "VIOL_METHOD",
+          "alarm": true,
+          "block": false,
+          "learn": true
+        },
+        {
+          "name": "VIOL_PARAMETER_DATA_TYPE",
+          "alarm": true,
+          "block": false,
+          "learn": true
+        },
+        {
+          "name": "VIOL_URL",
+          "alarm": true,
+          "block": false,
+          "learn": true
+        }
+      ]
+    },
+    "methods": [
+      {
+        "name": "GET"
+      },
+      {
+        "name": "POST"
+      },
+      {
+        "name": "HEAD"
+      }
+    ],
+    "urls": [
+      {
+        "name": "/",
+        "type": "wildcard",
+        "protocol": "both",
+        "method": "*",
+        "isAllowed": true,
+        "performStaging": true
+      },
+      {
+        "name": "/admin*",
+        "type": "wildcard",
+        "protocol": "both",
+        "method": "*",
+        "isAllowed": true,
+        "performStaging": true,
+        "description": "Review policy suggestions for privileged routes before moving to blocking mode."
+      }
+    ]
+  }
+}
