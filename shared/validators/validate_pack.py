@@ -22,6 +22,7 @@ import json
 import argparse
 import sys
 from pathlib import Path
+from urllib.parse import urlparse
 
 # Optional: use jsonschema for full schema validation if available
 try:
@@ -47,6 +48,7 @@ REQUIRED_FIELDS = [
 ]
 
 REQUIRED_STRING_FIELDS = tuple(REQUIRED_FIELDS)
+OPTIONAL_STRING_LIST_FIELDS = ("recommended_for", "references", "tags")
 
 # Valid enum values for key fields
 VALID_VENDORS = {
@@ -96,6 +98,7 @@ VALID_APP_CONTEXTS = {
 
 # Files and directories to skip during --all validation
 SKIP_PATTERNS = [
+    "publish-bridge",
     "schemas",
     "examples",
     "terraform",
@@ -122,7 +125,43 @@ def load_schema() -> dict | None:
         return None
 
 
-def validate_pack(pack_path: Path, schema: dict | None = None, verbose: bool = False) -> list[str]:
+def _validate_optional_string_list(
+    pack: dict,
+    field: str,
+    *,
+    require_web_url: bool = False,
+) -> list[str]:
+    """Validate optional metadata arrays even when full schema validation is unavailable."""
+    if field not in pack:
+        return []
+
+    value = pack.get(field)
+    if not isinstance(value, list):
+        return [f"'{field}' must be an array of non-empty strings when provided"]
+
+    errors = []
+    for index, item in enumerate(value, start=1):
+        if not isinstance(item, str) or not item.strip():
+            errors.append(
+                f"'{field}' item #{index} must be a non-empty string, got {type(item).__name__}"
+            )
+            continue
+
+        if require_web_url:
+            parsed = urlparse(item)
+            if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+                errors.append(
+                    f"'{field}' item #{index} must be an absolute http(s) URL, got '{item}'"
+                )
+
+    return errors
+
+
+def validate_pack(
+    pack_path: Path,
+    schema: dict | None = None,
+    verbose: bool = False,
+) -> list[str] | None:
     """
     Validate a single pack JSON file.
 
@@ -132,7 +171,8 @@ def validate_pack(pack_path: Path, schema: dict | None = None, verbose: bool = F
         verbose: If True, print detailed information even for valid packs.
 
     Returns:
-        A list of error message strings. An empty list means the pack is valid.
+        None when the file is a provider template that should be skipped, a list
+        of error message strings for invalid packs, or an empty list for a valid pack.
     """
     errors = []
 
@@ -154,7 +194,7 @@ def validate_pack(pack_path: Path, schema: dict | None = None, verbose: bool = F
     if "_k1n_metadata" in pack and not all(field in pack for field in REQUIRED_FIELDS):
         if verbose:
             print(f"SKIP {pack_path} — template file with _k1n_metadata, not a standalone pack")
-        return []
+        return None
 
     # --- Step 2: Check required fields ---
     for field in REQUIRED_FIELDS:
@@ -210,6 +250,15 @@ def validate_pack(pack_path: Path, schema: dict | None = None, verbose: bool = F
                 "Invalid 'app_context' value "
                 f"'{app_context}'. Must be one of: {sorted(VALID_APP_CONTEXTS)}"
             )
+
+    for field in OPTIONAL_STRING_LIST_FIELDS:
+        errors.extend(
+            _validate_optional_string_list(
+                pack,
+                field,
+                require_web_url=(field == "references"),
+            )
+        )
 
     # --- Step 4: Validate version format (semantic versioning) ---
     version = pack.get("version", "")
@@ -292,6 +341,9 @@ Examples:
             sys.exit(1)
 
         errors = validate_pack(pack_path, schema=schema, verbose=args.verbose)
+        if errors is None:
+            print(f"SKIP  {pack_path}")
+            sys.exit(0)
         if errors:
             print(f"FAIL  {pack_path}")
             for e in errors:

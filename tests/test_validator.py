@@ -133,6 +133,39 @@ class TestValidatePack(unittest.TestCase):
         errors = validate_pack(pack_path)
         self.assertEqual(errors, [], f"Pack with optional fields should be valid, got: {errors}")
 
+    def test_recommended_for_requires_array_of_strings(self):
+        """recommended_for should fail closed on malformed list metadata."""
+        pack = self._valid_pack()
+        pack["recommended_for"] = ["web_apps", " ", 123]
+        pack_path = self._write_pack(pack)
+        errors = validate_pack(pack_path, schema=None)
+        self.assertTrue(
+            any("recommended_for" in e.lower() for e in errors),
+            f"Expected recommended_for validation error, got: {errors}"
+        )
+
+    def test_tags_must_be_a_list_when_present(self):
+        """tags should reject non-list values without relying on jsonschema."""
+        pack = self._valid_pack()
+        pack["tags"] = "sqli"
+        pack_path = self._write_pack(pack)
+        errors = validate_pack(pack_path, schema=None)
+        self.assertTrue(
+            any("tags" in e.lower() for e in errors),
+            f"Expected tags validation error, got: {errors}"
+        )
+
+    def test_references_require_absolute_http_urls(self):
+        """references should reject non-web URLs in fallback validation mode."""
+        pack = self._valid_pack()
+        pack["references"] = ["javascript:alert(1)", "https://owasp.org/"]
+        pack_path = self._write_pack(pack)
+        errors = validate_pack(pack_path, schema=None)
+        self.assertTrue(
+            any("references" in e.lower() for e in errors),
+            f"Expected references validation error, got: {errors}"
+        )
+
     # -------------------------------------------------------------------------
     # Tests: Missing required fields
     # -------------------------------------------------------------------------
@@ -361,7 +394,7 @@ class TestValidatePack(unittest.TestCase):
         }
         pack_path = self._write_pack(template)
         errors = validate_pack(pack_path)
-        self.assertEqual(errors, [], f"Template files should be skipped, got: {errors}")
+        self.assertIsNone(errors, f"Template files should be skipped, got: {errors}")
 
     # -------------------------------------------------------------------------
     # Tests: should_skip()
@@ -375,6 +408,11 @@ class TestValidatePack(unittest.TestCase):
     def test_should_skip_terraform_directory(self):
         """Files in 'terraform' directories should be skipped."""
         path = Path("/repo/cloudflare/terraform/main.tf.json")
+        self.assertTrue(should_skip(path))
+
+    def test_should_skip_publish_bridge_queue_artifacts(self):
+        """Repo-local publication queue payloads should not be treated as packs."""
+        path = Path("/repo/publish-bridge/results/20260411T221018-baa6e68cb277.json")
         self.assertTrue(should_skip(path))
 
     def test_should_skip_virtualenv_metadata(self):
