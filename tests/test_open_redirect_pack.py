@@ -317,6 +317,11 @@ def test_ored003_next_param():
     assert _has(r, "ORED-003")
 
 
+def test_ored003_percent_encoded_double_slash_fires():
+    r = evaluate(params={"url": "%2F%2Fevil.com/path"})
+    assert _has(r, "ORED-003")
+
+
 def test_ored003_blocked_false_alone():
     # ORED-003 is HIGH, default block_on_severity is CRITICAL
     r = evaluate(params={"url": "//evil.com"})
@@ -372,6 +377,11 @@ def test_ored004_leading_space_then_backslash_fires():
     assert _has(r, "ORED-004")
 
 
+def test_ored004_percent_encoded_backslash_fires():
+    r = evaluate(params={"url": "%5Cevil.com"})
+    assert _has(r, "ORED-004")
+
+
 # ===========================================================================
 # ORED-005 — JavaScript / VBScript scheme
 # ===========================================================================
@@ -419,6 +429,12 @@ def test_ored005_blocked_true():
 def test_ored005_callback_param():
     r = evaluate(params={"callback": "javascript:xss()"})
     assert _has(r, "ORED-005")
+
+
+def test_ored005_percent_encoded_javascript_fires():
+    r = evaluate(params={"url": "javascript%3Aalert(1)"})
+    assert _has(r, "ORED-005")
+    assert r.blocked is True
 
 
 def test_ored005_javascript_with_tab_fires():
@@ -471,6 +487,11 @@ def test_ored006_relative_path_no_fire():
 def test_ored006_blocked_false_alone():
     r = evaluate(params={"url": "data:text/html,x"})
     assert r.blocked is False
+
+
+def test_ored006_percent_encoded_data_uri_fires():
+    r = evaluate(params={"url": "data%3Atext%2Fhtml%2Cx"})
+    assert _has(r, "ORED-006")
 
 
 def test_ored006_blocked_when_threshold_high():
@@ -563,6 +584,11 @@ def test_ored007_relative_path_no_fire():
 
 def test_ored007_double_slash_xyz_fires():
     r = evaluate(params={"url": "//phish.xyz/fake-login"})
+    assert _has(r, "ORED-007")
+
+
+def test_ored007_percent_encoded_suspicious_tld_fires():
+    r = evaluate(params={"url": "https%3A%2F%2Fevil.xyz%2Flanding"})
     assert _has(r, "ORED-007")
 
 

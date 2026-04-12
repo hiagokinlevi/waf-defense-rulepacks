@@ -219,6 +219,16 @@ def _run_checks(
     findings: List[OREDFinding] = []
     stripped = raw_value.lstrip()       # for checks sensitive to leading whitespace
     fired_001 = False                   # track whether ORED-001 fired
+    decoded_variants = _iter_decoded_variants(raw_value)
+    decoded_candidates = [variant.lstrip() for variant in decoded_variants]
+
+    def _first_matching_candidate(pattern_check) -> Optional[tuple[str, bool]]:
+        if pattern_check(stripped):
+            return stripped, False
+        for candidate in decoded_candidates:
+            if pattern_check(candidate):
+                return candidate, True
+        return None
 
     # ------------------------------------------------------------------
     # ORED-001 — Absolute URL redirect to external domain
@@ -245,7 +255,7 @@ def _run_checks(
     # ------------------------------------------------------------------
     if not fired_001:
         # Only fire when raw did NOT already trigger ORED-001
-        for decoded in _iter_decoded_variants(raw_value):
+        for decoded in decoded_variants:
             if _is_ored001_pattern(decoded.lstrip()):
                 domain = _extract_domain(decoded.lstrip())
                 if not _domain_allowed(domain, allowed_domains):
@@ -266,95 +276,137 @@ def _run_checks(
     # ------------------------------------------------------------------
     # ORED-003 — Double/triple-slash protocol-relative redirect
     # ------------------------------------------------------------------
-    if stripped.startswith("///") or stripped.startswith("//"):
+    ored003_match = _first_matching_candidate(
+        lambda value: value.startswith("///") or value.startswith("//")
+    )
+    if ored003_match:
+        evidence, decoded_bypass = ored003_match
         findings.append(OREDFinding(
             check_id="ORED-003",
             severity=_CHECK_SEVERITY["ORED-003"],
             title=_CHECK_TITLES["ORED-003"],
             detail=(
-                f"Parameter '{param_name}' starts with '//{{...}}' suggesting a "
-                "protocol-relative redirect to an external host."
+                f"Parameter '{param_name}' "
+                + (
+                    "URL-encoded value decodes to a protocol-relative redirect "
+                    "to an external host."
+                    if decoded_bypass
+                    else "starts with '//{...}' suggesting a protocol-relative "
+                    "redirect to an external host."
+                )
             ),
             weight=_CHECK_WEIGHTS["ORED-003"],
             parameter=param_name,
-            evidence=_truncate(stripped),
+            evidence=_truncate(raw_value if decoded_bypass else evidence),
         ))
 
     # ------------------------------------------------------------------
     # ORED-004 — Backslash bypass
     # ------------------------------------------------------------------
     # Matches: \, \\, /\, \/  at start of (stripped) value
-    if re.match(r"^(\\\\|\\|/\\|\\/)", stripped):
+    ored004_match = _first_matching_candidate(
+        lambda value: bool(re.match(r"^(\\\\|\\|/\\|\\/)", value))
+    )
+    if ored004_match:
+        evidence, decoded_bypass = ored004_match
         findings.append(OREDFinding(
             check_id="ORED-004",
             severity=_CHECK_SEVERITY["ORED-004"],
             title=_CHECK_TITLES["ORED-004"],
             detail=(
-                f"Parameter '{param_name}' starts with a backslash sequence, "
-                "a common path-normalisation bypass technique."
+                f"Parameter '{param_name}' "
+                + (
+                    "URL-encoded value decodes to a backslash-prefixed redirect "
+                    "bypass sequence."
+                    if decoded_bypass
+                    else "starts with a backslash sequence, a common "
+                    "path-normalisation bypass technique."
+                )
             ),
             weight=_CHECK_WEIGHTS["ORED-004"],
             parameter=param_name,
-            evidence=_truncate(stripped),
+            evidence=_truncate(raw_value if decoded_bypass else evidence),
         ))
 
     # ------------------------------------------------------------------
     # ORED-005 — javascript: / vbscript: scheme
     # ------------------------------------------------------------------
-    if re.match(r"^(javascript|vbscript)\s*:", stripped, re.IGNORECASE):
+    ored005_match = _first_matching_candidate(
+        lambda value: bool(re.match(r"^(javascript|vbscript)\s*:", value, re.IGNORECASE))
+    )
+    if ored005_match:
+        evidence, decoded_bypass = ored005_match
         findings.append(OREDFinding(
             check_id="ORED-005",
             severity=_CHECK_SEVERITY["ORED-005"],
             title=_CHECK_TITLES["ORED-005"],
             detail=(
-                f"Parameter '{param_name}' contains a JavaScript or VBScript URI "
-                "scheme — can execute arbitrary code in the browser."
+                f"Parameter '{param_name}' "
+                + (
+                    "URL-encoded value decodes to a JavaScript or VBScript URI "
+                    "scheme that can execute arbitrary code in the browser."
+                    if decoded_bypass
+                    else "contains a JavaScript or VBScript URI scheme — can "
+                    "execute arbitrary code in the browser."
+                )
             ),
             weight=_CHECK_WEIGHTS["ORED-005"],
             parameter=param_name,
-            evidence=_truncate(stripped),
+            evidence=_truncate(raw_value if decoded_bypass else evidence),
         ))
 
     # ------------------------------------------------------------------
     # ORED-006 — data: URI scheme
     # ------------------------------------------------------------------
-    if stripped.lower().startswith("data:"):
+    ored006_match = _first_matching_candidate(lambda value: value.lower().startswith("data:"))
+    if ored006_match:
+        evidence, decoded_bypass = ored006_match
         findings.append(OREDFinding(
             check_id="ORED-006",
             severity=_CHECK_SEVERITY["ORED-006"],
             title=_CHECK_TITLES["ORED-006"],
             detail=(
-                f"Parameter '{param_name}' contains a data: URI, which can embed "
-                "arbitrary HTML/JavaScript payloads."
+                f"Parameter '{param_name}' "
+                + (
+                    "URL-encoded value decodes to a data: URI, which can embed "
+                    "arbitrary HTML/JavaScript payloads."
+                    if decoded_bypass
+                    else "contains a data: URI, which can embed arbitrary "
+                    "HTML/JavaScript payloads."
+                )
             ),
             weight=_CHECK_WEIGHTS["ORED-006"],
             parameter=param_name,
-            evidence=_truncate(stripped),
+            evidence=_truncate(raw_value if decoded_bypass else evidence),
         ))
 
     # ------------------------------------------------------------------
     # ORED-007 — Suspicious TLD
     # ------------------------------------------------------------------
-    # Only fire when value is URL-like and ORED-001 did not decide it is allowed
-    lower_val = raw_value.lower()
-    if "//" in lower_val or lower_val.startswith("http"):
-        tld = _extract_tld(raw_value)
-        if tld and tld in _SUSPICIOUS_TLDS:
-            # Do not fire when ORED-001 already marked the domain as allowed
-            domain = _extract_domain(raw_value if "://" in raw_value else "http:" + raw_value)
-            if not _domain_allowed(domain, allowed_domains):
-                findings.append(OREDFinding(
-                    check_id="ORED-007",
-                    severity=_CHECK_SEVERITY["ORED-007"],
-                    title=_CHECK_TITLES["ORED-007"],
-                    detail=(
-                        f"Parameter '{param_name}' redirect URL uses suspicious TLD "
-                        f"'{tld}', commonly associated with malicious domains."
-                    ),
-                    weight=_CHECK_WEIGHTS["ORED-007"],
-                    parameter=param_name,
-                    evidence=_truncate(raw_value),
-                ))
+    # Only fire when raw or decoded value is URL-like and the destination is not allow-listed.
+    for candidate in [stripped, *decoded_candidates]:
+        lower_val = candidate.lower()
+        if "//" not in lower_val and not lower_val.startswith("http"):
+            continue
+        tld = _extract_tld(candidate)
+        if not tld or tld not in _SUSPICIOUS_TLDS:
+            continue
+        domain = _extract_domain(candidate if "://" in candidate else "http:" + candidate)
+        if _domain_allowed(domain, allowed_domains):
+            continue
+        findings.append(OREDFinding(
+            check_id="ORED-007",
+            severity=_CHECK_SEVERITY["ORED-007"],
+            title=_CHECK_TITLES["ORED-007"],
+            detail=(
+                f"Parameter '{param_name}' redirect URL uses suspicious TLD "
+                f"'{tld}', commonly associated with malicious domains."
+            ),
+            weight=_CHECK_WEIGHTS["ORED-007"],
+            parameter=param_name,
+            evidence=_truncate(raw_value if candidate != stripped else candidate),
+        ))
+        break
 
     return findings
 
