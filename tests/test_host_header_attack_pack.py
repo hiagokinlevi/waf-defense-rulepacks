@@ -94,6 +94,29 @@ def test_hho003_metadata_ip_with_trailing_dot_fires() -> None:
     assert result.blocked is True
 
 
+def test_hho003_internal_tld_host_fires() -> None:
+    result = _pack().evaluate(_req(headers={"Host": "vault.internal"}))
+    assert _has(result, "HHO-003")
+    assert result.blocked is True
+
+
+def test_hho003_well_known_internal_service_host_fires() -> None:
+    result = _pack().evaluate(_req(headers={"Host": "redis"}))
+    assert _has(result, "HHO-003")
+    assert result.blocked is True
+
+
+def test_hho003_cluster_local_host_fires() -> None:
+    result = _pack().evaluate(_req(headers={"Host": "payments.api.svc.cluster.local"}))
+    assert _has(result, "HHO-003")
+    assert result.blocked is True
+
+
+def test_hho003_public_domain_with_internal_label_does_not_fire() -> None:
+    result = _pack().evaluate(_req(headers={"Host": "internal.example.com"}))
+    assert not _has(result, "HHO-003")
+
+
 def test_hho004_invalid_chars_fire() -> None:
     result = _pack().evaluate(_req(headers={"Host": "app.example.com/admin"}))
     assert _has(result, "HHO-004")

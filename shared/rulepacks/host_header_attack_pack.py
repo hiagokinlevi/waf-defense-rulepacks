@@ -9,12 +9,12 @@ development, CI sanity checks, and pre-production traffic fixture review.
 
 Rule Catalogue
 --------------
-HHO-001  Conflicting host-routing headers present                      (HIGH)
-HHO-002  Host-style header contains an absolute URL or scheme          (HIGH)
-HHO-003  Host-style header points to loopback/private/metadata target  (CRITICAL)
-HHO-004  Host-style header contains invalid characters or traversal    (CRITICAL)
-HHO-005  Host / X-Forwarded-Host mismatch across external domains      (HIGH)
-HHO-006  Multiple host values supplied in a single header              (HIGH)
+HHO-001  Conflicting host-routing headers present                              (HIGH)
+HHO-002  Host-style header contains an absolute URL or scheme                  (HIGH)
+HHO-003  Host-style header points to loopback/private/internal/metadata target (CRITICAL)
+HHO-004  Host-style header contains invalid characters or traversal            (CRITICAL)
+HHO-005  Host / X-Forwarded-Host mismatch across external domains              (HIGH)
+HHO-006  Multiple host values supplied in a single header                      (HIGH)
 HHO-007  Host-style header uses an IP literal where canonical host is a domain (MEDIUM)
 """
 from __future__ import annotations
@@ -84,6 +84,31 @@ _METADATA_HOSTS = frozenset({
     "metadata.google.internal",
     "metadata.azure.internal",
     "instance-data.ec2.internal",
+})
+_INTERNAL_HOST_SUFFIXES = (
+    ".internal",
+    ".local",
+    ".localdomain",
+    ".corp",
+    ".intranet",
+    ".lan",
+    ".home",
+    ".cluster.local",
+)
+_INTERNAL_SERVICE_HOSTS = frozenset({
+    "redis",
+    "memcached",
+    "rabbitmq",
+    "kafka",
+    "elasticsearch",
+    "mongodb",
+    "mysql",
+    "postgres",
+    "consul",
+    "vault",
+    "etcd",
+    "zookeeper",
+    "minio",
 })
 
 
@@ -269,6 +294,10 @@ def _is_private_or_metadata(host_value: str) -> bool:
     host = _split_host_port(host_value)
     if host in _METADATA_HOSTS or host == "localhost":
         return True
+    if host in _INTERNAL_SERVICE_HOSTS:
+        return True
+    if any(host.endswith(suffix) for suffix in _INTERNAL_HOST_SUFFIXES):
+        return True
     ip = _to_ip(host)
     if ip is None:
         return False
@@ -382,7 +411,7 @@ class HostHeaderAttackPack:
                     "HHO-003",
                     header_name,
                     stripped_value,
-                    f"Header '{header_name}' targets loopback, private addressing, or metadata infrastructure.",
+                    f"Header '{header_name}' targets loopback, private addressing, internal DNS, or metadata infrastructure.",
                     "Block internal or metadata host targets at the WAF edge and restrict origin trust to approved public domains.",
                 )
 
