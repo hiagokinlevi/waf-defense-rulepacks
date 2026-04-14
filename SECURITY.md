@@ -17,7 +17,7 @@ If you discover a security vulnerability in this project — including errors in
 
 ### How to Report
 
-1. Email: `security@[maintainer-domain]` *(update with actual contact before production use)*
+1. Email: `hiagokinlevi@protonmail.com`
 2. Or open a [GitHub Security Advisory](https://github.com/hiagokinlevi/waf-defense-rulepacks/security/advisories/new) via the repository's Security tab.
 
 ### What to Include

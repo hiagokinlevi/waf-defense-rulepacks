@@ -177,7 +177,7 @@ def validate_pack(
     pack_path: Path,
     schema: dict | None = None,
     verbose: bool = False,
-) -> list[str]:
+) -> list[str] | None:
     """
     Validate a single pack JSON file.
 
@@ -187,8 +187,8 @@ def validate_pack(
         verbose: If True, print detailed information even for valid packs.
 
     Returns:
-        A list of error message strings. An empty list means the pack is valid or
-        a provider template that should be skipped by higher-level tooling.
+        None when the file is a provider template that should be skipped, a list
+        of error message strings for invalid packs, or an empty list for a valid pack.
     """
     errors = []
 
@@ -210,7 +210,7 @@ def validate_pack(
     if _is_template_container(pack):
         if verbose:
             print(f"SKIP {pack_path} — template file with _k1n_metadata, not a standalone pack")
-        return []
+        return None
 
     # --- Step 2: Check required fields ---
     for field in REQUIRED_FIELDS:
@@ -360,6 +360,9 @@ Examples:
             print(f"SKIP  {pack_path}")
             sys.exit(0)
         errors = validate_pack(pack_path, schema=schema, verbose=args.verbose)
+        if errors is None:
+            print(f"SKIP  {pack_path}")
+            sys.exit(0)
         if errors:
             print(f"FAIL  {pack_path}")
             for e in errors:

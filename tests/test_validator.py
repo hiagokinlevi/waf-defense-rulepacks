@@ -394,7 +394,7 @@ class TestValidatePack(unittest.TestCase):
         }
         pack_path = self._write_pack(template)
         errors = validate_pack(pack_path)
-        self.assertEqual(errors, [], f"Template files should be skipped, got: {errors}")
+        self.assertIsNone(errors, f"Template files should be skipped, got: {errors}")
 
     # -------------------------------------------------------------------------
     # Tests: should_skip()
