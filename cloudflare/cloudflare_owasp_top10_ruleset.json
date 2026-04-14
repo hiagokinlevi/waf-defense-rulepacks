@@ -1,0 +1,50 @@
+{
+  "name": "Cloudflare OWASP Top 10 Custom Ruleset",
+  "vendor": "cloudflare",
+  "version": "1.0",
+  "maturity": "production",
+  "objective": "Provide baseline protection against common OWASP Top 10 web attacks using Cloudflare WAF custom rules.",
+  "deployment_notes": "Deploy rules in LOG mode first to evaluate false positives. After validation, switch action to BLOCK. Monitor security events and tune for application-specific parameters.",
+  "rules": [
+    {
+      "id": "CF-OWASP-SQLI-001",
+      "severity": "high",
+      "description": "Detect common SQL injection patterns in query string or body",
+      "expression": "(http.request.uri.query matches \"(?i)(union(.*?)select|select(.*?)from|insert(.*?)into|drop(.*?)table|or\\s+1=1|--|;--|xp_cmdshell)\") or (http.request.body.raw matches \"(?i)(union(.*?)select|select(.*?)from|insert(.*?)into|drop(.*?)table|or\\s+1=1|--|;--|xp_cmdshell)\")",
+      "action": "block",
+      "tags": ["owasp-a03", "sqli"]
+    },
+    {
+      "id": "CF-OWASP-XSS-001",
+      "severity": "high",
+      "description": "Detect reflected and stored XSS payload patterns",
+      "expression": "(http.request.uri.query matches \"(?i)(<script|</script|javascript:|onerror=|onload=|alert\\(|document\\.cookie)\") or (http.request.body.raw matches \"(?i)(<script|</script|javascript:|onerror=|onload=|alert\\(|document\\.cookie)\")",
+      "action": "block",
+      "tags": ["owasp-a03", "xss"]
+    },
+    {
+      "id": "CF-OWASP-CMDI-001",
+      "severity": "critical",
+      "description": "Detect command injection attempts",
+      "expression": "(http.request.uri.query matches \"(?i)(;\\s*(cat|ls|whoami|id|wget|curl|bash|sh))\") or (http.request.body.raw matches \"(?i)(;\\s*(cat|ls|whoami|id|wget|curl|bash|sh))\")",
+      "action": "block",
+      "tags": ["owasp-a03", "command-injection"]
+    },
+    {
+      "id": "CF-OWASP-FILEINC-001",
+      "severity": "high",
+      "description": "Detect local or remote file inclusion attempts",
+      "expression": "(http.request.uri.query matches \"(?i)(\\.\\./|/etc/passwd|boot.ini|\\.\\.\\\\)\") or (http.request.uri.query matches \"(?i)(https?:\\/\\/.*(\\.php|\\.txt|\\.cfg))\")",
+      "action": "block",
+      "tags": ["owasp-a05", "lfi", "rfi"]
+    },
+    {
+      "id": "CF-OWASP-SSRF-001",
+      "severity": "critical",
+      "description": "Detect attempts to access internal or metadata services via SSRF",
+      "expression": "(http.request.uri.query matches \"(?i)(127\\.0\\.0\\.1|localhost|169\\.254\\.169\\.254|0\\.0\\.0\\.0|metadata\\.google)\") or (http.request.body.raw matches \"(?i)(127\\.0\\.0\\.1|localhost|169\\.254\\.169\\.254|0\\.0\\.0\\.0|metadata\\.google)\")",
+      "action": "block",
+      "tags": ["owasp-a10", "ssrf"]
+    }
+  ]
+}
