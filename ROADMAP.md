@@ -46,4 +46,4 @@ This document outlines the planned evolution of waf-defense-rulepacks. Items are
 - [x] FortiWeb: P
 
 ## Automated Completions
-- [x] Cloudflare OWASP Top 10 Ruleset (cycle 1)
+- [x] AWS WAF Managed Rule Extension Pack (cycle 2)
