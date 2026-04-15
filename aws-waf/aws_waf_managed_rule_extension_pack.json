@@ -1,0 +1,105 @@
+{
+  "name": "AWS WAF Managed Rule Extension Pack",
+  "vendor": "aws-waf",
+  "description": "Custom rule group designed to complement AWS Managed Rules with detections for advanced SQL injection, obfuscated XSS payloads, and suspicious query string behaviors.",
+  "maturity": "stable",
+  "severity": "high",
+  "risk_mitigated": [
+    "Advanced SQL injection bypass techniques",
+    "Obfuscated or encoded XSS payloads",
+    "Query string abuse and anomaly patterns"
+  ],
+  "deployment_notes": [
+    "Deploy in COUNT mode first to observe potential false positives.",
+    "Review logs in AWS WAF logging (CloudWatch or Kinesis) before switching to BLOCK.",
+    "Tune regex patterns if your application legitimately uses encoded script fragments or complex query strings."
+  ],
+  "tuning_notes": [
+    "Whitelist known internal scanners or monitoring tools that may trigger encoded payload detections.",
+    "Adjust query string length thresholds for APIs with large query parameters.",
+    "Combine with AWS Managed Rule Groups such as AWSManagedRulesCommonRuleSet and AWSManagedRulesKnownBadInputsRuleSet."
+  ],
+  "rules": [
+    {
+      "name": "advanced-sqli-patterns",
+      "priority": 10,
+      "action": "block",
+      "description": "Detects SQL injection attempts using comment obfuscation, concatenation tricks, and union-based enumeration.",
+      "statement": {
+        "RegexPatternSetReferenceStatement": {
+          "FieldToMatch": { "QueryString": {} },
+          "TextTransformations": [
+            { "Priority": 0, "Type": "URL_DECODE" },
+            { "Priority": 1, "Type": "LOWERCASE" }
+          ],
+          "RegexPatterns": [
+            "(?i)(union[\\s\\S]*select)",
+            "(?i)(or\\s+1=1)",
+            "(?i)(information_schema)",
+            "(?i)(concat\\s*\\()",
+            "(?i)(sleep\\s*\\()"
+          ]
+        }
+      }
+    },
+    {
+      "name": "obfuscated-xss-payloads",
+      "priority": 20,
+      "action": "block",
+      "description": "Detects encoded or obfuscated cross-site scripting payloads in query parameters.",
+      "statement": {
+        "RegexPatternSetReferenceStatement": {
+          "FieldToMatch": { "AllQueryArguments": {} },
+          "TextTransformations": [
+            { "Priority": 0, "Type": "URL_DECODE" },
+            { "Priority": 1, "Type": "HTML_ENTITY_DECODE" },
+            { "Priority": 2, "Type": "LOWERCASE" }
+          ],
+          "RegexPatterns": [
+            "(?i)<script",
+            "(?i)javascript:",
+            "(?i)onerror=",
+            "(?i)onload=",
+            "(?i)eval\\("
+          ]
+        }
+      }
+    },
+    {
+      "name": "suspicious-query-string-anomaly",
+      "priority": 30,
+      "action": "block",
+      "description": "Blocks abnormal query strings that indicate fuzzing, payload spraying, or exploitation attempts.",
+      "statement": {
+        "OrStatement": {
+          "Statements": [
+            {
+              "SizeConstraintStatement": {
+                "FieldToMatch": { "QueryString": {} },
+                "ComparisonOperator": "GT",
+                "Size": 2048,
+                "TextTransformations": [
+                  { "Priority": 0, "Type": "NONE" }
+                ]
+              }
+            },
+            {
+              "RegexMatchStatement": {
+                "FieldToMatch": { "QueryString": {} },
+                "RegexString": "(%25|%2e%2e|%3cscript)",
+                "TextTransformations": [
+                  { "Priority": 0, "Type": "LOWERCASE" }
+                ]
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "monitoring_guidance": [
+    "Monitor AWS WAF logs for rule names advanced-sqli-patterns and obfuscated-xss-payloads.",
+    "Investigate spikes in suspicious-query-string-anomaly as they may indicate automated scanning.",
+    "Correlate with ALB or CloudFront access logs for full request context."
+  ]
+}
