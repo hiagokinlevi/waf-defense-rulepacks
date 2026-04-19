@@ -46,4 +46,4 @@ This document outlines the planned evolution of waf-defense-rulepacks. Items are
 - [x] FortiWeb: P
 
 ## Automated Completions
-- [x] AWS WAF Managed Rule Extension Pack (cycle 2)
+- [x] Threat Intelligence IP Block Integration (cycle 18)
