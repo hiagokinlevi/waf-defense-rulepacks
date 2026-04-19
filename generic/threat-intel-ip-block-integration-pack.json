@@ -1,0 +1,83 @@
+{
+  "name": "Threat Intelligence IP Block Integration",
+  "vendor": "generic",
+  "summary": "Integrates external threat intelligence feeds to automatically block known malicious IP ranges including attacker infrastructure, TOR exit nodes, and botnet sources.",
+  "objective": "Reduce exposure to known hostile infrastructure by continuously ingesting curated IP intelligence and enforcing deny decisions at the WAF edge.",
+  "risk_mitigated": [
+    "Automated exploitation from known attacker IPs",
+    "Abuse from TOR exit node traffic where policy disallows anonymity networks",
+    "Botnet-originated scanning, credential stuffing, and application-layer DDoS prep activity"
+  ],
+  "severity": "high",
+  "maturity": "beta",
+  "tags": [
+    "threat-intelligence",
+    "ip-reputation",
+    "tor",
+    "botnet",
+    "automation",
+    "edge-defense"
+  ],
+  "assumptions": [
+    "Organization has legal and policy approval to consume third-party threat feeds",
+    "WAF platform supports IP/CIDR block lists or equivalent reputation controls",
+    "Feed refresh and rollout workflows can be automated with rollback support"
+  ],
+  "detection_logic": {
+    "type": "ip_match",
+    "description": "Match client source IP against dynamically maintained deny lists populated from external threat intelligence providers.",
+    "sources": [
+      "Known attacker infrastructure feeds",
+      "TOR exit node list",
+      "Botnet C2 and infected node reputation feeds"
+    ],
+    "normalization": [
+      "Normalize to canonical CIDR notation",
+      "Deduplicate overlapping ranges",
+      "Drop malformed, private, and reserved ranges unless explicitly approved"
+    ]
+  },
+  "actions": {
+    "default": "block",
+    "staged_rollout": [
+      "log",
+      "challenge_or_rate_limit",
+      "block"
+    ],
+    "exceptions": [
+      "Allowlist approved partner/VPN egress ranges",
+      "Bypass for validated internal synthetic monitoring"
+    ]
+  },
+  "tuning_notes": [
+    "Begin in log-only mode for 3-7 days to baseline impact",
+    "Score and prioritize feeds by confidence and false-positive history",
+    "Set stricter action for high-confidence botnet and active exploitation feeds",
+    "Apply temporary quarantine (time-bound block) for lower-confidence sources",
+    "Maintain emergency global bypass and fast rollback for operational incidents"
+  ],
+  "deployment_notes": [
+    "Ingest feeds on a fixed cadence (e.g., every 15-60 minutes) with atomic list replacement",
+    "Version each generated list artifact for traceability",
+    "Validate feed freshness and fail closed/open according to risk policy",
+    "Promote through dev -> staging -> production with automated checks",
+    "Document feed ownership, SLA, and incident escalation path"
+  ],
+  "monitoring_guidance": [
+    "Track blocked request volume by feed/source and ASN",
+    "Alert on sudden spikes after feed updates",
+    "Measure false-positive rate via sampled log review and support tickets",
+    "Monitor list size growth and WAF platform capacity limits",
+    "Audit feed update success/failure and staleness age"
+  ],
+  "limitations": [
+    "IP reputation is ineffective against fast-rotating residential proxies",
+    "TOR-based blocking may affect privacy-conscious legitimate users",
+    "Third-party feed quality can vary and requires continuous validation"
+  ],
+  "references": [
+    "https://check.torproject.org/torbulkexitlist",
+    "https://www.spamhaus.org/blocklists/",
+    "https://www.abuseipdb.com/"
+  ]
+}
