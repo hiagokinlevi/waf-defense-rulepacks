@@ -1,0 +1,99 @@
+{
+  "name": "Path Traversal and LFI Detection Pack",
+  "slug": "path-traversal-lfi-protection-pack",
+  "vendor": "generic",
+  "version": "1.0.0",
+  "description": "Detects directory traversal attempts, encoded path manipulation, and local file inclusion payloads targeting application file systems.",
+  "objective": "Identify and block requests attempting to traverse directories or include sensitive local files via request components.",
+  "risk_mitigated": "Unauthorized file disclosure, source code exposure, credential leakage, and host compromise paths enabled by traversal/LFI payloads.",
+  "severity": "high",
+  "maturity": "stable",
+  "tags": [
+    "path-traversal",
+    "lfi",
+    "owasp-a01",
+    "input-validation",
+    "file-system"
+  ],
+  "rules": [
+    {
+      "id": "pt_lfi_001_raw_traversal",
+      "description": "Detect raw directory traversal sequences in URL, query string, body, or headers.",
+      "logic": "(?i)(?:\\.\\./|\\.\\.\\\\){1,}",
+      "targets": [
+        "uri",
+        "query",
+        "body",
+        "headers"
+      ],
+      "action": "block",
+      "score": 40
+    },
+    {
+      "id": "pt_lfi_002_encoded_traversal",
+      "description": "Detect URL-encoded and double-encoded traversal separators and dot segments.",
+      "logic": "(?i)(?:%2e|%252e){2}(?:%2f|%5c|%252f|%255c)|(?:%2e%2e|%252e%252e)(?:/|\\\\|%2f|%5c|%252f|%255c)",
+      "targets": [
+        "uri",
+        "query",
+        "body"
+      ],
+      "action": "block",
+      "score": 45
+    },
+    {
+      "id": "pt_lfi_003_sensitive_file_targets",
+      "description": "Detect common LFI targets and sensitive local file references.",
+      "logic": "(?i)(?:/etc/passwd|/etc/shadow|/proc/self/environ|/proc/version|/windows/win\\.ini|boot\\.ini|web\\.config|\\.env|id_rsa|authorized_keys)",
+      "targets": [
+        "uri",
+        "query",
+        "body"
+      ],
+      "action": "block",
+      "score": 50
+    },
+    {
+      "id": "pt_lfi_004_php_wrapper_lfi",
+      "description": "Detect PHP stream wrappers commonly used in LFI exploitation.",
+      "logic": "(?i)(?:php://(?:input|filter|fd|stdin)|file://|zip://|phar://|glob://|expect://)",
+      "targets": [
+        "uri",
+        "query",
+        "body"
+      ],
+      "action": "block",
+      "score": 50
+    }
+  ],
+  "tuning_notes": [
+    "Start in log/challenge mode to baseline legitimate traffic that includes relative paths.",
+    "Exclude known-safe endpoints that accept file path fragments (for example, developer tooling routes).",
+    "Normalize and decode inputs once in the WAF pipeline before evaluating encoded traversal signatures.",
+    "Pair with application allowlists for file identifiers rather than filesystem paths."
+  ],
+  "deployment_notes": [
+    "Deploy as a high-priority custom rule set ahead of generic allow rules.",
+    "Enable blocking for high-confidence signatures (sensitive file targets and wrapper payloads) first.",
+    "Roll out raw/encoded traversal signatures in monitor mode for at least 7 days before full block in mixed legacy environments."
+  ],
+  "monitoring": {
+    "kpis": [
+      "Traversal/LFI rule match volume by endpoint",
+      "Top offending source IPs and ASNs",
+      "False positive rate after exclusions",
+      "Blocked requests containing sensitive-file indicators"
+    ],
+    "alerts": [
+      "Spike in encoded traversal matches over 3x baseline in 15 minutes",
+      "Any sustained hits against /etc/passwd, web.config, or .env indicators",
+      "Repeated wrapper payload attempts from a single source"
+    ]
+  },
+  "references": [
+    "https://owasp.org/www-community/attacks/Path_Traversal",
+    "https://owasp.org/Top10/A01_2021-Broken_Access_Control/",
+    "https://cwe.mitre.org/data/definitions/22.html",
+    "https://cwe.mitre.org/data/definitions/98.html"
+  ]
+}
