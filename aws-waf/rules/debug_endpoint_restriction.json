@@ -1,0 +1,48 @@
+{
+  "name": "AWS WAF — Debug and Metrics Endpoint Restriction",
+  "vendor": "aws-waf",
+  "category": "access_control",
+  "app_context": "cloud_hosted",
+  "objective": "Block or tightly scope access to common diagnostics, metrics, and actuator paths that should not be broadly reachable from the internet.",
+  "risk_mitigated": "Exposure of metrics, health, actuator, or internal diagnostic paths that support reconnaissance, data leakage, and privilege escalation planning.",
+  "severity": "high",
+  "mode": "block",
+  "recommended_for": ["web_apps", "apis", "microservices", "cloud_hosted"],
+  "potential_side_effects": "Platform telemetry, uptime monitors, and synthetic probes can be blocked if they rely on public paths instead of authenticated internal routes.",
+  "tuning_notes": "If diagnostics must remain reachable, prefer an allowlist or authenticated internal network path. Do not globally weaken the path match just to accommodate monitoring.",
+  "deployment_notes": "Use this rule after inventorying operational probes and platform tooling. Keep production metrics and diagnostics behind private networking or a separate authenticated control plane whenever possible.",
+  "monitoring_notes": "Track repeated requests to operational paths by ASN and host. A steady trickle of debug endpoint requests from the internet usually indicates opportunistic scanning.",
+  "version": "1.0.0",
+  "maturity": "reviewed",
+  "references": [
+    "https://docs.spring.io/spring-boot/reference/actuator/endpoints.html",
+    "https://cheatsheetseries.owasp.org/cheatsheets/Microservices_Security_Cheat_Sheet.html"
+  ],
+  "aws_waf_rule": {
+    "Name": "RestrictDebugAndMetricsEndpoints",
+    "Priority": 7,
+    "Action": {
+      "Block": {}
+    },
+    "VisibilityConfig": {
+      "SampledRequestsEnabled": true,
+      "CloudWatchMetricsEnabled": true,
+      "MetricName": "RestrictDebugAndMetricsEndpoints"
+    },
+    "Statement": {
+      "RegexMatchStatement": {
+        "RegexString": "^/(actuator|metrics|debug|internal|healthz|health|status|env|prometheus)(/.*)?$",
+        "FieldToMatch": {
+          "UriPath": {}
+        },
+        "TextTransformations": [
+          {
+            "Priority": 0,
+            "Type": "LOWERCASE"
+          }
+        ]
+      }
+    }
+  },
+  "tags": ["aws-waf", "debug-endpoints", "metrics", "actuator", "high"]
+}

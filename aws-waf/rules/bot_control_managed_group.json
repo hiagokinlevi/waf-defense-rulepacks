@@ -1,0 +1,39 @@
+{
+  "name": "AWS WAF — Bot Control Managed Rule Group Baseline",
+  "vendor": "aws-waf",
+  "category": "bot_protection",
+  "app_context": "saas",
+  "objective": "Add AWS Bot Control in Count mode to profile automation pressure on login, search, and public application paths before enforcing stronger bot mitigation.",
+  "risk_mitigated": "Commodity automation, scraping, low-and-slow reconnaissance, and bot-led abuse against browser-facing application paths.",
+  "severity": "medium",
+  "mode": "count",
+  "recommended_for": ["web_apps", "saas", "e-commerce"],
+  "potential_side_effects": "Bot Control adds cost and can flag legitimate automation, SEO crawlers, and partner integrations if tuned too aggressively.",
+  "tuning_notes": "Start in Count mode and review labels, verified bot behavior, and top categories before enabling challenge or block controls. Exclude partner and crawler workflows only after validation.",
+  "deployment_notes": "Prefer this pack for browser-facing applications where automation pressure is material. Pair with dedicated API controls for machine-to-machine endpoints instead of reusing one bot posture everywhere.",
+  "monitoring_notes": "Review CloudWatch metrics, labels, and sampled requests for verified bots, likely automation, and repeated login pressure. Coordinate with business teams before blocking high-value crawlers or integrations.",
+  "version": "1.0.0",
+  "maturity": "reviewed",
+  "references": [
+    "https://docs.aws.amazon.com/waf/latest/developerguide/aws-managed-rule-groups-bot.html"
+  ],
+  "aws_waf_rule": {
+    "Name": "AWSManagedRulesBotControlRuleSetBaseline",
+    "Priority": 60,
+    "Statement": {
+      "ManagedRuleGroupStatement": {
+        "VendorName": "AWS",
+        "Name": "AWSManagedRulesBotControlRuleSet"
+      }
+    },
+    "OverrideAction": {
+      "Count": {}
+    },
+    "VisibilityConfig": {
+      "SampledRequestsEnabled": true,
+      "CloudWatchMetricsEnabled": true,
+      "MetricName": "AWSManagedRulesBotControlRuleSetBaseline"
+    }
+  },
+  "tags": ["aws-waf", "bot-control", "managed-rule-group", "browser-security", "medium"]
+}

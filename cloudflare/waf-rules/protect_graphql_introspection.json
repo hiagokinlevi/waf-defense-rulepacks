@@ -1,0 +1,25 @@
+{
+  "name": "Protect GraphQL Introspection and Schema Enumeration",
+  "vendor": "cloudflare",
+  "category": "api_protection",
+  "app_context": "api",
+  "objective": "Detect and block high-signal GraphQL introspection and schema enumeration requests on production-facing GraphQL endpoints.",
+  "risk_mitigated": "Schema discovery that accelerates abuse of hidden operations, undocumented object paths, and weak authorization controls.",
+  "severity": "high",
+  "mode": "managed_challenge",
+  "recommended_for": ["apis", "graphql", "web_apps"],
+  "potential_side_effects": "Developer tooling, CI schema validation, and staging environments may legitimately use introspection. Production use requires explicit exceptions for trusted automation.",
+  "tuning_notes": "Start in log mode and scope the rule to production GraphQL paths only. Exclude internal IP ranges, service tokens, or staging hostnames instead of weakening the core expression.",
+  "deployment_notes": "Deploy on GraphQL entrypoints such as /graphql and /api/graphql. Keep developer playgrounds and staging hostnames out of production zones whenever possible. Promote from log to managed challenge after validating legitimate clients.",
+  "monitoring_notes": "Review Cloudflare Security Events for repeated introspection attempts, user-agents tied to scanners, and partners or internal tooling that still depend on schema discovery. Track top source ASNs and top paths.",
+  "version": "1.0.0",
+  "maturity": "reviewed",
+  "references": [
+    "https://graphql.org/learn/introspection/",
+    "https://cheatsheetseries.owasp.org/cheatsheets/GraphQL_Cheat_Sheet.html"
+  ],
+  "cloudflare_expression": "(http.request.uri.path in {\"/graphql\" \"/api/graphql\"} and (http.request.body contains \"__schema\" or http.request.body contains \"__type\" or http.request.body contains \"IntrospectionQuery\"))",
+  "action": "managed_challenge",
+  "log_only_expression": "(http.request.uri.path in {\"/graphql\" \"/api/graphql\"} and (http.request.body contains \"__schema\" or http.request.body contains \"__type\" or http.request.body contains \"IntrospectionQuery\"))",
+  "tags": ["graphql", "schema-enumeration", "production-hardening", "api-security", "high"]
+}

@@ -163,3 +163,4 @@ Next steps:
 - Deploy `block_xss.json` using the same process
 - Deploy `protect_admin_panel.json` (this one can go straight to block mode if your IP allowlist is accurate)
 - Read the [full Cloudflare Deployment Guide](../docs/deployment-guides/cloudflare.md) for the complete baseline deployment workflow
+- Continue with [`cloudflare/examples/protect_public_api.md`](../../cloudflare/examples/protect_public_api.md) and [`training/tutorials/cloudflare_zero_downtime_rollout.md`](cloudflare_zero_downtime_rollout.md) for larger API-heavy estates

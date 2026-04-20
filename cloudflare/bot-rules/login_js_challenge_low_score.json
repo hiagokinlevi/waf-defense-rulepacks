@@ -1,0 +1,25 @@
+{
+  "name": "Low Bot Score Login Challenge",
+  "vendor": "cloudflare",
+  "category": "bot_protection",
+  "app_context": "saas",
+  "objective": "Challenge low-confidence browser traffic targeting login and sign-in flows to reduce credential stuffing and scripted recon before hard blocking.",
+  "risk_mitigated": "Automated login abuse, account enumeration, and low-volume bot reconnaissance against authentication surfaces.",
+  "severity": "high",
+  "mode": "js_challenge",
+  "recommended_for": ["web_apps", "saas", "admin_panels"],
+  "potential_side_effects": "Legacy clients, embedded browsers, and automation that cannot complete JavaScript challenges will fail if the rule is applied too broadly.",
+  "tuning_notes": "Apply only to browser-based login flows, not API token endpoints. Raise the bot-score threshold gradually and keep mobile SDK endpoints out of scope unless they can satisfy the challenge flow.",
+  "deployment_notes": "Start with log-only analytics around bot scores on login paths, then move to JS challenge once you confirm that browser clients dominate the targeted routes.",
+  "monitoring_notes": "Track challenge solve rate, repeated challenged IPs, and login failure spikes after rollout. Compare solve rates by ASN and country to identify automated pressure.",
+  "version": "1.0.0",
+  "maturity": "reviewed",
+  "references": [
+    "https://developers.cloudflare.com/bots/",
+    "https://cheatsheetseries.owasp.org/cheatsheets/Authentication_Cheat_Sheet.html"
+  ],
+  "cloudflare_expression": "((http.request.uri.path contains \"/login\" or http.request.uri.path contains \"/sign-in\" or http.request.uri.path contains \"/auth/login\") and cf.bot_management.score lt 25 and http.request.method in {\"GET\" \"POST\"})",
+  "action": "js_challenge",
+  "log_only_expression": "((http.request.uri.path contains \"/login\" or http.request.uri.path contains \"/sign-in\" or http.request.uri.path contains \"/auth/login\") and cf.bot_management.score lt 25 and http.request.method in {\"GET\" \"POST\"})",
+  "tags": ["bot-score", "login", "credential-stuffing", "js-challenge", "high"]
+}

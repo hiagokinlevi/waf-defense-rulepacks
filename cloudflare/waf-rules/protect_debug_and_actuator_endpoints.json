@@ -1,0 +1,25 @@
+{
+  "name": "Protect Debug, Actuator, Metrics, and Internal Endpoints",
+  "vendor": "cloudflare",
+  "category": "access_control",
+  "app_context": "cloud_hosted",
+  "objective": "Restrict access to common debug, actuator, metrics, and internal operational endpoints that should not be broadly reachable from the internet.",
+  "risk_mitigated": "Exposure of operational metadata, health endpoints, diagnostics, and internal surfaces that support reconnaissance or post-auth exploitation.",
+  "severity": "high",
+  "mode": "block",
+  "recommended_for": ["web_apps", "apis", "admin_panels", "microservices"],
+  "potential_side_effects": "Legitimate platform probes, uptime checks, and internal observability agents can be blocked if their source IPs or service paths are not excluded.",
+  "tuning_notes": "Add explicit allowlists for uptime monitoring, synthetic probes, and internal platform ranges. If actuator paths are required by a trusted service, scope the allowlist narrowly by source and hostname.",
+  "deployment_notes": "Deploy directly in block mode only after validating trusted probe and operations ranges. For mixed-use environments, begin in log mode and review all matches for one week.",
+  "monitoring_notes": "Alert on any request volume against /actuator, /debug, /internal, /metrics, /healthz, and related paths from unknown ASNs or unexpected geographies. Correlate repeated hits with bot score and user-agent anomalies.",
+  "version": "1.0.0",
+  "maturity": "reviewed",
+  "references": [
+    "https://cheatsheetseries.owasp.org/cheatsheets/Microservices_Security_Cheat_Sheet.html",
+    "https://docs.spring.io/spring-boot/reference/actuator/endpoints.html"
+  ],
+  "cloudflare_expression": "(http.request.uri.path matches \"^/(actuator|metrics|debug|internal|healthz|health|status|env|prometheus)(/.*)?$\")",
+  "action": "block",
+  "log_only_expression": "(http.request.uri.path matches \"^/(actuator|metrics|debug|internal|healthz|health|status|env|prometheus)(/.*)?$\")",
+  "tags": ["actuator", "debug", "metrics", "operational-surface", "high"]
+}

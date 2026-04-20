@@ -37,9 +37,27 @@ This document outlines the planned evolution of waf-defense-rulepacks. Items are
 - [x] Cloudflare: Command injection pack
 - [x] Cloudflare: SSRF protection pack
 - [x] Cloudflare: API abuse / excessive data exposure pack
+- [x] Cloudflare: GraphQL introspection pack
+- [x] Cloudflare: Debug and actuator endpoint restriction pack
+- [x] Cloudflare: Password reset rate limit pack
+- [x] Cloudflare: Webhook burst rate limit pack
+- [x] Cloudflare: Low bot-score login challenge baseline
 - [x] Host header poisoning / routing override analysis pack
 - [x] AWS WAF: IP reputation rule (using AWS Managed IP reputation list)
 - [x] AWS WAF: Log4Shell virtual patch pack
+- [x] AWS WAF: Administrative surface allowlist pack
+- [x] AWS WAF: Password reset rate limit pack
+- [x] AWS WAF: GraphQL introspection visibility pack
+- [x] AWS WAF: Public API burst rate limit pack
+- [x] AWS WAF: Debug and metrics endpoint restriction pack
+- [x] AWS WAF: Bot Control managed-group baseline
+- [x] Deployment guide: AWS WAF API protection
+- [x] Deployment guide: Cloudflare API security
+- [x] Production rollout checklist: AWS WAF
+- [x] Production rollout checklist: Cloudflare
+- [x] Examples: AWS ALB and CloudFront
+- [x] Examples: Cloudflare public API protection
+- [x] Tutorials: AWS WAF baseline and Cloudflare zero-downtime rollout
 - [x] F5 BIG-IP: iRules for SQLi and XSS
 - [x] F5 BIG-IP: ASM policy export template
 - [x] Imperva: Custom rule JSON templates

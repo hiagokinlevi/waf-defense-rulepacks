@@ -70,10 +70,23 @@ See the [README](../README.md) for a quick start guide.
 
 For vendor-specific deployment, see:
 - [Cloudflare Deployment Guide](deployment-guides/cloudflare.md)
+- [Cloudflare API Security Rollout Guide](deployment-guides/cloudflare_api_security.md)
 - [AWS WAF Deployment Guide](deployment-guides/aws_waf.md)
+- [AWS WAF API Protection Guide](deployment-guides/aws_waf_api_protection.md)
 - [WAF Landscape](waf-landscape.md)
 - [Vendor Selection Checklist](review-checklists/vendor-selection.md)
+- [Cloudflare Production Rollout Checklist](review-checklists/cloudflare_production_rollout.md)
+- [AWS WAF Production Rollout Checklist](review-checklists/aws_waf_production_rollout.md)
 
 AWS WAF teams that do not need the full baseline WebACL can start with the
 standalone managed-rule packs under `aws-waf/rules/`, including the IP
 reputation pack that ships in Count mode for sampled-request review.
+
+This repository now includes deeper material for Cloudflare and AWS WAF teams that need:
+
+- GraphQL-specific protection guidance
+- recovery-flow and login throttling patterns
+- webhook burst protection
+- admin and debug-surface lockdown packs
+- ALB and CloudFront rollout examples
+- vendor-specific production rollout checklists

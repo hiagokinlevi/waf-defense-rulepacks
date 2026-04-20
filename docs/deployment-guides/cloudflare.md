@@ -193,3 +193,14 @@ Key settings:
 **Symptom**: Integration tests that call `/login` are being rate limited.
 
 **Fix**: Add the CI/CD runner IP(s) to a bypass list or use a dedicated test credential endpoint that is excluded from rate limiting.
+
+---
+
+## Recommended Deep-Dive Material
+
+For broader Cloudflare coverage beyond the initial baseline, continue with:
+
+- [`cloudflare/examples/protect_public_api.md`](../../cloudflare/examples/protect_public_api.md)
+- [`docs/deployment-guides/cloudflare_api_security.md`](cloudflare_api_security.md)
+- [`docs/review-checklists/cloudflare_production_rollout.md`](../review-checklists/cloudflare_production_rollout.md)
+- [`training/tutorials/cloudflare_zero_downtime_rollout.md`](../../training/tutorials/cloudflare_zero_downtime_rollout.md)
