@@ -1,0 +1,143 @@
+{
+  "name": "Admin Endpoint Protection Rules",
+  "slug": "admin-endpoint-protection-rules",
+  "vendor": "generic",
+  "description": "Restricts access to sensitive administrative paths (e.g., /admin, /wp-admin, /dashboard, /manage) through layered controls: trusted IP allowlists, request rate limiting, and authentication/session signal validation.",
+  "objective": "Reduce unauthorized access, brute-force attempts, and reconnaissance against administrative surfaces.",
+  "risk_mitigated": [
+    "Unauthorized administrative access",
+    "Credential stuffing and brute-force on admin interfaces",
+    "Automated reconnaissance of management endpoints",
+    "Privilege abuse via unauthenticated entry paths"
+  ],
+  "severity": "high",
+  "maturity": "stable",
+  "tags": [
+    "admin",
+    "access-control",
+    "rate-limit",
+    "authentication",
+    "hardening"
+  ],
+  "rules": [
+    {
+      "id": "admin-path-match",
+      "action": "match",
+      "description": "Match requests targeting sensitive admin paths.",
+      "logic": {
+        "operator": "or",
+        "conditions": [
+          {
+            "field": "http.request.uri.path",
+            "operator": "equals",
+            "value": "/admin"
+          },
+          {
+            "field": "http.request.uri.path",
+            "operator": "starts_with",
+            "value": "/wp-admin"
+          },
+          {
+            "field": "http.request.uri.path",
+            "operator": "starts_with",
+            "value": "/dashboard"
+          },
+          {
+            "field": "http.request.uri.path",
+            "operator": "starts_with",
+            "value": "/manage"
+          }
+        ]
+      }
+    },
+    {
+      "id": "admin-allowlist-enforcement",
+      "action": "block",
+      "description": "Block admin-path traffic unless source IP is in a trusted allowlist.",
+      "depends_on": "admin-path-match",
+      "logic": {
+        "operator": "not_in",
+        "field": "source.ip",
+        "value_ref": "trusted_admin_ip_allowlist"
+      },
+      "tuning": [
+        "Maintain separate allowlists per environment (prod/stage/dev).",
+        "Include VPN and office egress ranges; use short TTL for temporary entries.",
+        "If remote workforce is dynamic, prefer identity-aware controls as primary and IP allowlist as secondary."
+      ]
+    },
+    {
+      "id": "admin-rate-limit",
+      "action": "throttle",
+      "description": "Apply strict per-IP request limits on admin paths to reduce brute-force and scanning activity.",
+      "depends_on": "admin-path-match",
+      "rate_limit": {
+        "key": "source.ip",
+        "requests": 30,
+        "interval_seconds": 60,
+        "mitigation_timeout_seconds": 600
+      },
+      "tuning": [
+        "Start in monitor/log mode and baseline legitimate admin behavior.",
+        "Use lower thresholds for login or auth endpoints nested under admin paths.",
+        "Consider separate thresholds for trusted automation accounts."
+      ]
+    },
+    {
+      "id": "admin-auth-signal-required",
+      "action": "challenge",
+      "description": "Require valid authentication/session signals for admin-path requests; otherwise challenge or block.",
+      "depends_on": "admin-path-match",
+      "logic": {
+        "operator": "or",
+        "conditions": [
+          {
+            "field": "auth.session.valid",
+            "operator": "equals",
+            "value": false
+          },
+          {
+            "field": "auth.mfa.present",
+            "operator": "equals",
+            "value": false
+          },
+          {
+            "field": "request.headers.authorization.present",
+            "operator": "equals",
+            "value": false
+          }
+        ]
+      },
+      "tuning": [
+        "Map auth signals to platform-native identity indicators (JWT validity, session cookie integrity, device trust).",
+        "For machine-to-machine admin APIs, replace MFA requirement with mTLS/client cert verification.",
+        "Escalate from challenge to block after confidence is established."
+      ]
+    }
+  ],
+  "deployment_notes": [
+    "Deploy in detection/log mode first and review at least 7 days of traffic.",
+    "Validate that break-glass and incident response admin access paths remain functional.",
+    "Roll out in stages: allowlist enforcement, then rate limiting, then auth-signal challenge/block.",
+    "Document operational ownership for allowlist maintenance and emergency exceptions."
+  ],
+  "monitoring": {
+    "metrics": [
+      "Blocked admin-path requests by source IP and path",
+      "Rate-limited events on admin surfaces",
+      "Auth-signal challenges and challenge solve rate",
+      "Top geographies/ASNs targeting admin endpoints"
+    ],
+    "alerts": [
+      "Spike in denied requests to /admin or /wp-admin",
+      "High-volume distributed probing across /dashboard and /manage",
+      "Sudden increase in failed auth-signal checks from previously trusted ranges"
+    ]
+  },
+  "false_positive_considerations": [
+    "Shared NAT egress can cause legitimate users to hit per-IP thresholds.",
+    "Some legacy admin tools may not present modern auth headers/signals.",
+    "Path-based matching should be reviewed for app-specific admin URL conventions."
+  ],
+  "version": "1.0.0"
+}
