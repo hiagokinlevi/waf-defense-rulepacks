@@ -1,0 +1,153 @@
+{
+  "name": "HTTP Protocol Anomaly Detection Rules",
+  "slug": "http-protocol-anomaly-detection",
+  "vendor": "generic",
+  "version": "1.0.0",
+  "maturity": "stable",
+  "severity": "high",
+  "type": "protocol-anomaly",
+  "objective": "Detect malformed and non-compliant HTTP requests that commonly indicate evasion, parser confusion, request smuggling preparation, or reconnaissance against edge/application infrastructure.",
+  "risk_mitigated": [
+    "Header injection via CRLF in header names/values",
+    "Abnormal or non-RFC-compliant HTTP methods",
+    "Oversized header fields and aggregate header abuse",
+    "HTTP protocol version and framing violations",
+    "Malformed request line and conflicting message semantics"
+  ],
+  "description": "Baseline protocol anomaly pack intended for translation into vendor-native WAF controls. Rules focus on request syntax validity, header safety, and strict HTTP parsing constraints to reduce evasion opportunities before application logic is reached.",
+  "rules": [
+    {
+      "id": "http-anom-001",
+      "title": "Header name/value CRLF injection",
+      "description": "Block requests where header names or values contain encoded or raw CR/LF characters that can enable header injection or response splitting paths.",
+      "logic": {
+        "match_any": [
+          "header_name matches (?i)(%0d|%0a|\\r|\\n)",
+          "header_value matches (?i)(%0d|%0a|\\r|\\n)"
+        ]
+      },
+      "action": "block",
+      "severity": "high"
+    },
+    {
+      "id": "http-anom-002",
+      "title": "Abnormal HTTP method",
+      "description": "Allow only explicitly approved methods for the protected surface and block unknown, mixed-case abuse variants, or tunneling methods not used by the application.",
+      "logic": {
+        "allowlist": [
+          "GET",
+          "POST",
+          "HEAD",
+          "PUT",
+          "PATCH",
+          "DELETE",
+          "OPTIONS"
+        ],
+        "field": "http.method",
+        "condition": "not_in_allowlist"
+      },
+      "action": "block",
+      "severity": "medium"
+    },
+    {
+      "id": "http-anom-003",
+      "title": "Oversized single header",
+      "description": "Detect and block single header field values beyond expected operational limits to mitigate buffer and parser stress attempts.",
+      "logic": {
+        "field": "any_header.value.length",
+        "operator": ">",
+        "value": 8192
+      },
+      "action": "block",
+      "severity": "medium"
+    },
+    {
+      "id": "http-anom-004",
+      "title": "Excessive aggregate header size",
+      "description": "Block requests with aggregate header bytes above platform tolerance to reduce oversized metadata abuse and intermediary desync edge cases.",
+      "logic": {
+        "field": "request.headers.total_size",
+        "operator": ">",
+        "value": 32768
+      },
+      "action": "block",
+      "severity": "medium"
+    },
+    {
+      "id": "http-anom-005",
+      "title": "Conflicting transfer semantics",
+      "description": "Block conflicting Content-Length and Transfer-Encoding combinations and malformed chunked indicators often associated with request smuggling attempts.",
+      "logic": {
+        "match_all": [
+          "header_exists('Content-Length')",
+          "header_exists('Transfer-Encoding')"
+        ]
+      },
+      "action": "block",
+      "severity": "high"
+    },
+    {
+      "id": "http-anom-006",
+      "title": "Invalid HTTP version or request line",
+      "description": "Detect malformed request line structure or unsupported protocol versions outside explicitly accepted values.",
+      "logic": {
+        "match_any": [
+          "http.version not_in ['HTTP/1.1','HTTP/2','HTTP/3']",
+          "request_line malformed"
+        ]
+      },
+      "action": "block",
+      "severity": "high"
+    },
+    {
+      "id": "http-anom-007",
+      "title": "Illegal header name characters",
+      "description": "Block header names containing characters outside token grammar to prevent parser ambiguity across intermediaries.",
+      "logic": {
+        "field": "header_name",
+        "operator": "regex_match",
+        "value": "[^!#$%&'*+.^_`|~0-9A-Za-z-]"
+      },
+      "action": "block",
+      "severity": "high"
+    }
+  ],
+  "deployment_notes": [
+    "Start in log/challenge mode for 7-14 days to baseline legitimate traffic.",
+    "Review legitimate method usage per path before enforcing strict method allowlist globally.",
+    "Tune header size thresholds to upstream limits (CDN, LB, ingress, app server) and pick the lowest safe bound.",
+    "If legacy clients exist, scope protocol-version checks by endpoint or client segment before full enforcement.",
+    "Enforce blocking first on internet-facing dynamic routes, then expand to all routes after validation."
+  ],
+  "tuning_notes": [
+    "Exclude known large-cookie paths (e.g., SSO callbacks) from single-header and aggregate-header limits where justified.",
+    "Normalize method casing prior to evaluation if vendor engine supports transformations.",
+    "For APIs using uncommon methods (e.g., PROPFIND), add explicit per-service exceptions rather than broad global allowance.",
+    "Pair conflicting transfer-semantic rule with upstream proxy hardening to preserve parser consistency."
+  ],
+  "monitoring": {
+    "primary_signals": [
+      "Rate of blocked protocol anomalies by rule id",
+      "Top offending source IPs/ASNs and user agents",
+      "Anomaly spikes by URI and edge POP/region",
+      "False-positive rate from trusted client segments"
+    ],
+    "alert_recommendations": [
+      "Alert on >3x baseline increase in any high-severity protocol anomaly over 15 minutes.",
+      "Alert when conflicting transfer semantic violations exceed threshold on a single route.",
+      "Create investigation ticket when repeated abnormal methods target privileged/admin paths."
+    ]
+  },
+  "references": [
+    "RFC 9110: HTTP Semantics",
+    "RFC 9112: HTTP/1.1",
+    "OWASP Web Security Testing Guide - HTTP Request Smuggling"
+  ],
+  "tags": [
+    "http",
+    "protocol",
+    "anomaly-detection",
+    "request-smuggling",
+    "hardening"
+  ]
+}
