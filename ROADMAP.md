@@ -46,4 +46,4 @@ This document outlines the planned evolution of waf-defense-rulepacks. Items are
 - [x] FortiWeb: P
 
 ## Automated Completions
-- [x] HTTP Protocol Anomaly Detection Rules (cycle 20)
+- [x] Admin Endpoint Protection Rules (cycle 21)
