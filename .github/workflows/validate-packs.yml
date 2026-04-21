@@ -1,0 +1,42 @@
+name: Validate Pack Metadata
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  validate-packs:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Install minimal dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install jsonschema
+
+      - name: Validate all pack JSON files
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t pack_files < <(find . -type f -name '*.json' \
+            -not -path './shared/schemas/*' \
+            -not -path './.github/*' \
+            | sort)
+
+          if [ ${#pack_files[@]} -eq 0 ]; then
+            echo 'No JSON pack files found to validate.'
+            exit 0
+          fi
+
+          for file in "${pack_files[@]}"; do
+            echo "Validating ${file}"
+            python shared/validators/validate_pack.py "$file"
+          done
