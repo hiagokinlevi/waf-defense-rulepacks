@@ -46,4 +46,4 @@ This document outlines the planned evolution of waf-defense-rulepacks. Items are
 - [x] FortiWeb: P
 
 ## Automated Completions
-- [x] Cloudflare GraphQL Introspection Protection Pack (cycle 24)
+- [x] GitHub Action for Pack Metadata Validation (cycle 25)
