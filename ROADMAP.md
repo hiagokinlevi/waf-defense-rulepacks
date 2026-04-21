@@ -46,4 +46,4 @@ This document outlines the planned evolution of waf-defense-rulepacks. Items are
 - [x] FortiWeb: P
 
 ## Automated Completions
-- [x] Terraform Deployment Examples for Each WAF (cycle 22)
+- [x] Automated Rule Testing with Malicious Payload Corpus (cycle 23)
