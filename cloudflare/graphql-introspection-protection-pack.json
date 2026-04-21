@@ -1,0 +1,49 @@
+{
+  "name": "Cloudflare GraphQL Introspection Protection Pack",
+  "vendor": "cloudflare",
+  "service": "waf",
+  "type": "custom-rule-pack",
+  "version": "1.0.0",
+  "maturity": "stable",
+  "objective": "Detect and prevent GraphQL schema enumeration attempts in production by matching common introspection query patterns in HTTP request bodies.",
+  "risk_mitigated": "Attackers use GraphQL introspection to enumerate schema types, fields, and operations, accelerating reconnaissance and enabling targeted abuse of sensitive or undocumented API capabilities.",
+  "severity": "high",
+  "tags": [
+    "graphql",
+    "api-security",
+    "reconnaissance",
+    "schema-enumeration",
+    "cloudflare-waf"
+  ],
+  "assumptions": [
+    "GraphQL requests are sent over HTTP and include query payloads in request bodies.",
+    "Production environments should generally not allow unauthenticated or broad introspection access.",
+    "Teams may require introspection in non-production environments for developer tooling."
+  ],
+  "tuning_notes": [
+    "Start in log mode and review for legitimate developer tooling or internal health checks that submit introspection queries.",
+    "If your API allows introspection for authenticated administrators, scope an allow rule before this rule using identity, source IP, or environment-specific hostnames.",
+    "Constrain expression scope to known GraphQL endpoints (for example, /graphql) to reduce false positives for non-GraphQL traffic.",
+    "Retain case-insensitive matching and include whitespace-tolerant patterns for robustness against minor query formatting changes."
+  ],
+  "deployment_notes": [
+    "Deploy in log mode first and monitor for at least one full release cycle before switching action to block in production.",
+    "For staging or development, either disable this rule pack or add a higher-priority allow rule for approved sources where introspection is required.",
+    "After validation, promote to block mode in production zones while keeping explicit non-production exceptions documented and reviewed."
+  ],
+  "monitoring_guidance": [
+    "Track hit rate by hostname, path, source ASN/IP, and user agent to identify scanning behavior versus expected internal usage.",
+    "Alert on spikes in matched requests, especially distributed attempts across multiple source networks.",
+    "Correlate with authentication and API error telemetry to detect follow-on probing or abuse after schema discovery attempts.",
+    "Review blocked/logged events during application releases to catch newly introduced legitimate introspection dependencies."
+  ],
+  "rules": [
+    {
+      "id": "cf-graphql-introspection-body-patterns",
+      "description": "Detect GraphQL introspection keywords (__schema, __type) in request bodies.",
+      "expression": "(http.request.method in {\"POST\" \"GET\"} and (http.request.uri.path contains \"/graphql\") and (lower(http.request.body.raw) contains \"__schema\" or lower(http.request.body.raw) contains \"__type\"))",
+      "action": "log",
+      "enabled": true
+    }
+  ]
+}
