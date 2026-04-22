@@ -46,4 +46,4 @@ This document outlines the planned evolution of waf-defense-rulepacks. Items are
 - [x] FortiWeb: P
 
 ## Automated Completions
-- [x] Introduce AWS WAF admin path deny-by-default pack (cycle 27)
+- [x] Add Cloudflare XML-RPC abuse mitigation pack (cycle 28)
