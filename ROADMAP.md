@@ -46,4 +46,4 @@ This document outlines the planned evolution of waf-defense-rulepacks. Items are
 - [x] FortiWeb: P
 
 ## Automated Completions
-- [x] Add strict JSON lint check for all pack files in CI (cycle 26)
+- [x] Introduce AWS WAF admin path deny-by-default pack (cycle 27)
