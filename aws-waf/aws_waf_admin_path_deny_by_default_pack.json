@@ -1,0 +1,129 @@
+{
+  "name": "AWS WAF Admin Path Deny-by-Default Pack",
+  "vendor": "aws-waf",
+  "description": "Blocks direct access to common administrative endpoints unless the source IP is explicitly allowlisted via an IP set reference.",
+  "objective": "Reduce exposure of administrative interfaces by enforcing default deny on high-risk admin paths and allowing access only from approved source networks.",
+  "risk_mitigated": "Unauthorized probing and direct attack attempts against administrative panels such as /admin, /wp-admin, /phpmyadmin, and /console.",
+  "severity": "high",
+  "maturity": "production",
+  "tags": [
+    "aws-waf",
+    "admin-surface",
+    "access-control",
+    "hardening"
+  ],
+  "deployment_notes": [
+    "Start in COUNT mode first to baseline legitimate traffic and identify missing allowlist ranges.",
+    "After validating logs and metrics, switch action to BLOCK for enforcement.",
+    "Place this rule high in WebACL priority, after explicit trusted allow rules and before generic allow flows.",
+    "Ensure the referenced IP set is managed through change control and includes approved office/VPN/jump-host egress ranges."
+  ],
+  "tuning_notes": [
+    "Create and maintain an AWS WAF IPSet containing approved source CIDRs for admin access.",
+    "During rollout, monitor sampled requests and WAF logs for blocked or counted legitimate admin access.",
+    "If your environment uses additional admin paths (e.g., /administrator, /manage), extend the path match list before BLOCK mode.",
+    "If behind proxies/CDN, ensure source IP handling is correct (e.g., forwarded IP configuration where applicable) before strict enforcement."
+  ],
+  "monitoring_guidance": [
+    "Track rule match counts in CloudWatch metrics (CountedRequests first, then BlockedRequests after cutover).",
+    "Alert on spikes in blocked admin-path requests, especially from new source ASNs or geographies.",
+    "Review top blocked URI paths and source IPs weekly to validate ongoing efficacy and tune allowlist/path set."
+  ],
+  "aws_waf": {
+    "scope": "REGIONAL",
+    "default_action": "allow",
+    "rules": [
+      {
+        "name": "admin-path-deny-unless-approved-ip",
+        "priority": 50,
+        "action": "count",
+        "statement": {
+          "and_statement": {
+            "statements": [
+              {
+                "or_statement": {
+                  "statements": [
+                    {
+                      "byte_match_statement": {
+                        "search_string": "/admin",
+                        "field_to_match": {
+                          "uri_path": {}
+                        },
+                        "text_transformations": [
+                          {
+                            "priority": 0,
+                            "type": "LOWERCASE"
+                          }
+                        ],
+                        "positional_constraint": "STARTS_WITH"
+                      }
+                    },
+                    {
+                      "byte_match_statement": {
+                        "search_string": "/wp-admin",
+                        "field_to_match": {
+                          "uri_path": {}
+                        },
+                        "text_transformations": [
+                          {
+                            "priority": 0,
+                            "type": "LOWERCASE"
+                          }
+                        ],
+                        "positional_constraint": "STARTS_WITH"
+                      }
+                    },
+                    {
+                      "byte_match_statement": {
+                        "search_string": "/phpmyadmin",
+                        "field_to_match": {
+                          "uri_path": {}
+                        },
+                        "text_transformations": [
+                          {
+                            "priority": 0,
+                            "type": "LOWERCASE"
+                          }
+                        ],
+                        "positional_constraint": "STARTS_WITH"
+                      }
+                    },
+                    {
+                      "byte_match_statement": {
+                        "search_string": "/console",
+                        "field_to_match": {
+                          "uri_path": {}
+                        },
+                        "text_transformations": [
+                          {
+                            "priority": 0,
+                            "type": "LOWERCASE"
+                          }
+                        ],
+                        "positional_constraint": "STARTS_WITH"
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "not_statement": {
+                  "statement": {
+                    "ip_set_reference_statement": {
+                      "arn": "arn:aws:wafv2:REGION:ACCOUNT_ID:regional/ipset/approved-admin-sources/IPSET_ID"
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "visibility_config": {
+          "sampled_requests_enabled": true,
+          "cloudwatch_metrics_enabled": true,
+          "metric_name": "adminPathDenyUnlessApprovedIp"
+        }
+      }
+    ]
+  }
+}
