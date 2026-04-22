@@ -1,0 +1,99 @@
+{
+  "name": "Cloudflare XML-RPC Abuse Mitigation Pack",
+  "slug": "cloudflare-xmlrpc-abuse-mitigation",
+  "vendor": "cloudflare",
+  "version": "1.0.0",
+  "maturity": "stable",
+  "severity": "high",
+  "objective": "Reduce abuse of WordPress xmlrpc.php endpoints used for pingback amplification and credential brute-force campaigns.",
+  "risk_mitigated": [
+    "DDoS reflection/amplification via XML-RPC pingback abuse",
+    "Credential brute-force attempts over XML-RPC methods",
+    "Application resource exhaustion from high-frequency XML-RPC POST traffic"
+  ],
+  "tags": [
+    "cloudflare",
+    "xmlrpc",
+    "wordpress",
+    "bruteforce",
+    "ddos",
+    "rate-limit"
+  ],
+  "assumptions": [
+    "Application stack includes WordPress or another CMS exposing /xmlrpc.php",
+    "Cloudflare WAF custom rules and rate limiting are available on the target plan",
+    "Security team can monitor Security Events/Logs during rollout"
+  ],
+  "rules": [
+    {
+      "id": "cf-xmlrpc-post-simulate",
+      "name": "Detect XML-RPC POST access",
+      "description": "Match POST requests targeting xmlrpc.php to establish baseline and support staged rollout.",
+      "type": "custom_rule",
+      "expression": "http.request.uri.path eq \"/xmlrpc.php\" and http.request.method eq \"POST\"",
+      "action": "log",
+      "enabled": true,
+      "notes": "Keep in log/simulate mode first to inventory legitimate XML-RPC clients before enforcement."
+    },
+    {
+      "id": "cf-xmlrpc-pingback-rate-limit",
+      "name": "Rate limit XML-RPC pingback abuse",
+      "description": "Throttle repeated XML-RPC requests likely associated with pingback amplification abuse.",
+      "type": "rate_limit_rule",
+      "match": {
+        "expression": "http.request.uri.path eq \"/xmlrpc.php\" and http.request.method eq \"POST\""
+      },
+      "characteristics": [
+        "ip.src"
+      ],
+      "threshold": {
+        "requests": 20,
+        "period_seconds": 60
+      },
+      "action": "managed_challenge",
+      "mitigation_timeout_seconds": 600,
+      "enabled": true,
+      "notes": "Tune threshold based on observed baseline. Consider lowering to 10/min for sites with no legitimate XML-RPC usage."
+    },
+    {
+      "id": "cf-xmlrpc-bruteforce-rate-limit",
+      "name": "Rate limit XML-RPC brute-force patterns",
+      "description": "Apply stricter per-IP threshold to reduce credential stuffing/brute-force attempts over xmlrpc.php.",
+      "type": "rate_limit_rule",
+      "match": {
+        "expression": "http.request.uri.path eq \"/xmlrpc.php\" and http.request.method eq \"POST\""
+      },
+      "characteristics": [
+        "ip.src"
+      ],
+      "threshold": {
+        "requests": 8,
+        "period_seconds": 60
+      },
+      "action": "block",
+      "mitigation_timeout_seconds": 900,
+      "enabled": true,
+      "notes": "Start as managed_challenge or log in initial rollout if XML-RPC is required for mobile app publishing workflows."
+    }
+  ],
+  "false_positive_notes": [
+    "Legacy CMS/mobile publishing clients (e.g., older WordPress mobile apps, Jetpack-like integrations, offline editors) may use xmlrpc.php heavily.",
+    "Some trusted plugins perform batch XML-RPC operations that can exceed conservative thresholds.",
+    "If XML-RPC is business-critical, allowlist known source IP ranges or service tokens where possible before switching to block."
+  ],
+  "deployment_notes": [
+    "Deploy in simulate/log mode first (at least 3-7 days) to build normal traffic baseline.",
+    "Review Cloudflare Security Events for xmlrpc.php POST volume, top source IPs/ASNs, and user-agent distribution.",
+    "Progressively enforce: log -> managed_challenge -> block, adjusting thresholds to avoid impact on legitimate legacy integrations.",
+    "If XML-RPC is unused, prefer explicit block on POST /xmlrpc.php after baseline validation."
+  ],
+  "monitoring_guidance": [
+    "Track request count and mitigation events for /xmlrpc.php by source IP and ASN.",
+    "Alert on sudden spikes in xmlrpc.php POST rates and repeated mitigations from diverse source ranges.",
+    "Correlate with origin CPU/PHP-FPM saturation signals to confirm risk reduction."
+  ],
+  "references": [
+    "https://blog.cloudflare.com/a-look-at-the-new-wordpress-brute-force-amplification-attack/",
+    "https://wordpress.org/documentation/article/xml-rpc/"
+  ]
+}
