@@ -46,4 +46,4 @@ This document outlines the planned evolution of waf-defense-rulepacks. Items are
 - [x] FortiWeb: P
 
 ## Automated Completions
-- [x] Add Cloudflare XML-RPC abuse mitigation pack (cycle 28)
+- [x] Create minimal pack example fixture for validator regression tests (cycle 29)
