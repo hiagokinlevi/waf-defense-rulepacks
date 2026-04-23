@@ -1,0 +1,19 @@
+{
+  "name": "Fixture Valid Minimal Pack",
+  "vendor": "generic",
+  "category": "baseline-hardening",
+  "description": "Known-good minimal metadata fixture for validator regression tests.",
+  "severity": "medium",
+  "maturity": "stable",
+  "objective": "Verify validator accepts a conforming minimal pack metadata document.",
+  "risk_mitigated": "Schema drift causing false negatives in validation checks.",
+  "deployment_notes": [
+    "Use only in automated tests."
+  ],
+  "tuning_notes": [
+    "No tuning required for fixture."
+  ],
+  "monitoring": [
+    "Ensure validator exit code is zero for this file."
+  ]
+}
