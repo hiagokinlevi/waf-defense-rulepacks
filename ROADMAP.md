@@ -46,4 +46,4 @@ This document outlines the planned evolution of waf-defense-rulepacks. Items are
 - [x] FortiWeb: P
 
 ## Automated Completions
-- [x] Create minimal pack example fixture for validator regression tests (cycle 29)
+- [x] Add severity-to-action guidance table in docs (cycle 30)
