@@ -1,0 +1,78 @@
+{
+  "name": "AWS WAF SQLi URI/Query Virtual Patch Pack",
+  "vendor": "aws-waf",
+  "version": "1.0.0",
+  "description": "Custom AWS WAF rules to block common SQL injection signatures in URI path and query string using focused regex pattern sets.",
+  "objective": "Provide a lightweight virtual patch layer for SQL injection attempts targeting URL paths and query parameters.",
+  "risk_mitigated": "Reduces risk of SQL injection exploitation via crafted URI/query payloads, including UNION-based, boolean/time-based, and comment-obfuscated probes.",
+  "severity": "high",
+  "maturity": "production",
+  "tuning_notes": [
+    "Start in COUNT mode for 3-7 days and review sampled requests before switching to BLOCK.",
+    "Allowlist known-safe endpoints that legitimately include SQL-like keywords in query values.",
+    "Prefer pairing with AWS ManagedRulesSQLiRuleSet for broader coverage."
+  ],
+  "deployment_guidance": [
+    "Attach to the target WebACL with priority above generic allow rules.",
+    "Begin with action=COUNT, validate false positives, then update action=BLOCK.",
+    "Deploy consistently across internet-facing ALB, API Gateway, and CloudFront associations."
+  ],
+  "monitoring_notes": [
+    "Track terminatingRuleId and count/block deltas after enablement.",
+    "Alert on spikes in SQLi match rates by URI and client IP.",
+    "Review WAF logs for repeated probes and feed offending IPs into reputation controls if appropriate."
+  ],
+  "labels": [
+    "sqli",
+    "virtual-patch",
+    "aws-waf",
+    "uri",
+    "query-string"
+  ],
+  "rules": [
+    {
+      "name": "sqli-uri-path-signatures",
+      "priority": 100,
+      "action": "BLOCK",
+      "statement": {
+        "regex_match_statement": {
+          "field_to_match": "uri_path",
+          "text_transformations": [
+            "URL_DECODE",
+            "HTML_ENTITY_DECODE",
+            "LOWERCASE",
+            "COMPRESS_WHITE_SPACE"
+          ],
+          "regex_string": "(?i)(?:\\bunion(?:\\s+all)?\\s+select\\b|\\bselect\\b.+\\bfrom\\b|(?:'|%27|\\\")\\s*(?:or|and)\\s*(?:'|%27|\\\"|\\d)|\\b(?:sleep|benchmark)\\s*\\(|/\\*|\\*/|--)"
+        }
+      },
+      "visibility_config": {
+        "sampled_requests_enabled": true,
+        "cloudwatch_metrics_enabled": true,
+        "metric_name": "sqli-uri-path-signatures"
+      }
+    },
+    {
+      "name": "sqli-query-string-signatures",
+      "priority": 110,
+      "action": "BLOCK",
+      "statement": {
+        "regex_match_statement": {
+          "field_to_match": "query_string",
+          "text_transformations": [
+            "URL_DECODE",
+            "HTML_ENTITY_DECODE",
+            "LOWERCASE",
+            "COMPRESS_WHITE_SPACE"
+          ],
+          "regex_string": "(?i)(?:\\bunion(?:\\s+all)?\\s+select\\b|\\binformation_schema\\b|\\b(?:or|and)\\b\\s+\\d+\\s*=\\s*\\d+|(?:'|%27|\\\")\\s*(?:or|and)\\s*(?:'|%27|\\\"|\\d)|\\bwaitfor\\s+delay\\b|\\bsleep\\s*\\(|\\bbenchmark\\s*\\(|/\\*|\\*/|--)"
+        }
+      },
+      "visibility_config": {
+        "sampled_requests_enabled": true,
+        "cloudwatch_metrics_enabled": true,
+        "metric_name": "sqli-query-string-signatures"
+      }
+    }
+  ]
+}
