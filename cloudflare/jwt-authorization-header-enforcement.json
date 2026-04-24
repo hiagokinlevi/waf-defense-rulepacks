@@ -1,0 +1,72 @@
+{
+  "name": "Cloudflare JWT Authorization Header Enforcement",
+  "slug": "cloudflare-jwt-authorization-header-enforcement",
+  "vendor": "cloudflare",
+  "version": "1.0.0",
+  "summary": "Enforce presence and basic Bearer token format in Authorization header for protected API routes.",
+  "objective": "Require API requests to protected paths to include an Authorization header in the form 'Bearer <token>' while allowing explicit public endpoint exclusions.",
+  "risk_mitigated": [
+    "Unauthenticated access to protected API routes",
+    "Inconsistent API auth enforcement across edge routes",
+    "Accidental exposure caused by missing upstream auth checks"
+  ],
+  "severity": "high",
+  "maturity": "beta",
+  "tags": [
+    "api",
+    "authentication",
+    "jwt",
+    "authorization-header",
+    "cloudflare-waf"
+  ],
+  "assumptions": [
+    "Protected API routes are under /api/*",
+    "JWT validation (signature, exp, iss, aud) is performed by origin/API gateway or dedicated auth service",
+    "Some endpoints (health and auth bootstrap) must remain publicly accessible"
+  ],
+  "deployment": {
+    "mode": "log",
+    "notes": [
+      "Start in log mode and review at least 7 days of events before enforcing block/challenge.",
+      "After tuning exclusions, switch action to block for high-confidence enforcement."
+    ]
+  },
+  "tuning_notes": [
+    "Exclude health endpoints such as /api/health, /api/healthz, and /api/status to avoid monitoring false positives.",
+    "Exclude auth bootstrap/token issuance routes (for example /api/auth/login, /api/auth/token, /api/auth/refresh) where a bearer token is not expected.",
+    "If CORS preflight is used, allow OPTIONS requests on protected paths to bypass this check.",
+    "Use exact-path exclusions where possible instead of broad prefix exclusions."
+  ],
+  "monitoring": {
+    "metrics": [
+      "Count of matched requests missing Authorization header",
+      "Count of matched requests with malformed Bearer format",
+      "Top paths and user agents triggering matches",
+      "False-positive rate after exclusions"
+    ],
+    "alerts": [
+      "Sudden spike in missing/malformed Authorization matches on protected API paths",
+      "New high-volume match source on a route expected to be authenticated"
+    ]
+  },
+  "rules": [
+    {
+      "id": "cf-jwt-authz-header-enforcement",
+      "description": "Detect requests to protected API paths that do not include a valid-looking Bearer Authorization header.",
+      "action": "log",
+      "enabled": true,
+      "expression": "(http.request.uri.path matches \"^/api(?:/.*)?$\") and not (http.request.uri.path in {\"/api/health\" \"/api/healthz\" \"/api/status\" \"/api/auth/login\" \"/api/auth/token\" \"/api/auth/refresh\"}) and (http.request.method ne \"OPTIONS\") and not (len(http.request.headers[\"authorization\"]) gt 0 and lower(http.request.headers[\"authorization\"][0]) matches \"^bearer\\s+[^\\s].*\")",
+      "notes": [
+        "This rule validates only presence and basic format, not JWT cryptographic integrity.",
+        "Promote to block after tuning exclusions and validating normal client behavior."
+      ]
+    }
+  ],
+  "change_log": [
+    {
+      "version": "1.0.0",
+      "date": "2026-04-24",
+      "description": "Initial Cloudflare pack for Authorization Bearer header presence/format enforcement on protected API paths."
+    }
+  ]
+}
