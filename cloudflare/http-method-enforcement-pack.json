@@ -1,0 +1,66 @@
+{
+  "name": "Cloudflare HTTP Method Enforcement Pack",
+  "vendor": "cloudflare",
+  "service": "waf_custom_rules",
+  "category": "protocol-hardening",
+  "objective": "Reduce attack surface by blocking or challenging uncommon/high-risk HTTP methods and tightly scoping state-changing methods to approved API paths.",
+  "risk_mitigated": [
+    "HTTP verb tampering and method confusion attacks",
+    "Reconnaissance and proxy abuse via TRACE/CONNECT/TRACK",
+    "Unauthorized data modification attempts using PUT/DELETE/PATCH outside intended API routes"
+  ],
+  "severity": "high",
+  "maturity": "production",
+  "description": "This pack enforces a conservative HTTP method policy for internet-facing applications. It immediately controls high-risk legacy/tunneling verbs (TRACE, CONNECT, TRACK) and provides an optional rule to restrict PUT/DELETE/PATCH to explicit API prefixes.",
+  "rules": [
+    {
+      "id": "cf-http-method-deny-risky-verbs",
+      "description": "Block high-risk/uncommon HTTP methods TRACE, CONNECT, and TRACK",
+      "expression": "http.request.method in {\"TRACE\" \"CONNECT\" \"TRACK\"}",
+      "action": "block",
+      "enabled": true
+    },
+    {
+      "id": "cf-http-method-restrict-write-verbs-to-api",
+      "description": "Optional: Restrict PUT/DELETE/PATCH to approved API paths",
+      "expression": "http.request.method in {\"PUT\" \"DELETE\" \"PATCH\"} and not starts_with(http.request.uri.path, \"/api/\") and not starts_with(http.request.uri.path, \"/v1/\")",
+      "action": "managed_challenge",
+      "enabled": false
+    }
+  ],
+  "tuning_notes": [
+    "Inventory valid methods per application and endpoint before enabling blocking actions.",
+    "If WebDAV or proxy/tunnel behavior is intentionally used, explicitly exempt trusted paths/hosts before enabling the risky-verb block.",
+    "Adjust allowed write-method path prefixes (for example /api/, /v1/, /internal-api/) to match your API routing design.",
+    "For browser/API clients that cannot complete challenges reliably, use log mode first and then move directly to block after validation."
+  ],
+  "deployment_notes": [
+    "Safe rollout: deploy both rules in non-blocking posture first (log/challenge).",
+    "Phase 1 (48-72h): set risky-verb rule to managed_challenge or log-equivalent and optional write-verb scope rule to managed_challenge; review events.",
+    "Phase 2: promote risky-verb rule to block after confirming no legitimate traffic uses TRACE/CONNECT/TRACK.",
+    "Phase 3: enable and enforce write-verb path restriction (managed_challenge -> block) after API owner sign-off and exception handling."
+  ],
+  "monitoring_guidance": [
+    "Track request counts by method over time; alert on sudden spikes in TRACE/CONNECT/TRACK attempts.",
+    "Monitor managed challenge solve rate and abandonment for PUT/DELETE/PATCH requests.",
+    "Review top blocked/challenged paths and source ASNs/IPs to identify scanners and misconfigured clients.",
+    "Create a short-lived rollout dashboard segmented by rule ID to catch false positives early."
+  ],
+  "false_positive_considerations": [
+    "Legacy integrations, diagnostics tools, or non-browser clients may use uncommon methods unexpectedly.",
+    "Admin tools and CI/CD jobs may issue PUT/DELETE/PATCH outside standard public API prefixes.",
+    "Multi-tenant apps with custom path structures should tune prefix conditions carefully before enforcement."
+  ],
+  "references": [
+    "https://developers.cloudflare.com/waf/custom-rules/",
+    "https://developers.cloudflare.com/ruleset-engine/rules-language/",
+    "https://owasp.org/www-project-web-security-testing-guide/"
+  ],
+  "tags": [
+    "cloudflare",
+    "http-method",
+    "hardening",
+    "api-security",
+    "production-first"
+  ]
+}
