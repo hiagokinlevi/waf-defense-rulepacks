@@ -46,4 +46,4 @@ This document outlines the planned evolution of waf-defense-rulepacks. Items are
 - [x] FortiWeb: P
 
 ## Automated Completions
-- [x] Add Cloudflare HTTP Method Enforcement Pack (deny risky verbs) (cycle 33)
+- [x] Add Cloudflare JWT Authorization Header Enforcement Pack (cycle 34)
