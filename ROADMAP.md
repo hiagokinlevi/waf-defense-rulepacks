@@ -46,4 +46,4 @@ This document outlines the planned evolution of waf-defense-rulepacks. Items are
 - [x] FortiWeb: P
 
 ## Automated Completions
-- [x] Add AWS WAF SQLi URI/query virtual patch pack (cycle 31)
+- [x] Add Azure WAF admin path restriction baseline policy (cycle 32)
