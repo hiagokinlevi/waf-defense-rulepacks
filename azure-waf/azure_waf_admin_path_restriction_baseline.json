@@ -1,0 +1,140 @@
+{
+  "name": "Azure WAF Admin Path Restriction Baseline",
+  "slug": "azure-waf-admin-path-restriction-baseline",
+  "vendor": "azure-waf",
+  "version": "1.0.0",
+  "description": "Deny-by-default baseline policy for sensitive administrative endpoints on Azure Front Door WAF and Application Gateway WAF with explicit trusted source CIDR allowlisting.",
+  "objective": "Restrict access to sensitive administrative paths so only explicitly trusted source CIDRs can reach them, while blocking all other sources by default.",
+  "risk_mitigated": [
+    "Administrative interface brute-force and credential stuffing exposure",
+    "Reconnaissance and attack surface enumeration of privileged endpoints",
+    "Unauthorized access attempts to backend management surfaces",
+    "Opportunistic exploitation of unpatched admin tooling"
+  ],
+  "severity": "high",
+  "maturity": "production",
+  "tags": [
+    "azure",
+    "waf",
+    "front-door",
+    "application-gateway",
+    "admin",
+    "access-control",
+    "baseline"
+  ],
+  "assumptions": [
+    "Administrative endpoints are not intended for broad internet access",
+    "Trusted operator IP space can be represented as CIDR ranges",
+    "Application path routing preserves request URI path for WAF evaluation"
+  ],
+  "parameters": {
+    "trusted_source_cidrs": [
+      "203.0.113.0/24",
+      "198.51.100.10/32"
+    ],
+    "admin_path_prefixes": [
+      "/admin",
+      "/wp-admin",
+      "/manage",
+      "/internal"
+    ],
+    "block_status_code": 403
+  },
+  "rules": {
+    "front_door": {
+      "type": "CustomRule",
+      "name": "deny-untrusted-admin-path-access",
+      "priority": 100,
+      "action": "Block",
+      "enabled": true,
+      "match_logic": "AND",
+      "conditions": [
+        {
+          "variable": "RequestUri",
+          "operator": "BeginsWith",
+          "values": [
+            "/admin",
+            "/wp-admin",
+            "/manage",
+            "/internal"
+          ],
+          "transforms": [
+            "Lowercase",
+            "UrlDecode"
+          ]
+        },
+        {
+          "variable": "RemoteAddr",
+          "operator": "IPMatch",
+          "negate": true,
+          "values": [
+            "203.0.113.0/24",
+            "198.51.100.10/32"
+          ]
+        }
+      ]
+    },
+    "application_gateway": {
+      "type": "MatchRule",
+      "name": "deny-untrusted-admin-path-access",
+      "priority": 100,
+      "action": "Block",
+      "enabled": true,
+      "match_logic": "AND",
+      "match_conditions": [
+        {
+          "match_variable": "RequestUri",
+          "operator": "BeginsWith",
+          "match_values": [
+            "/admin",
+            "/wp-admin",
+            "/manage",
+            "/internal"
+          ],
+          "transforms": [
+            "Lowercase",
+            "UrlDecode"
+          ]
+        },
+        {
+          "match_variable": "RemoteAddr",
+          "operator": "IPMatch",
+          "negate_condition": true,
+          "match_values": [
+            "203.0.113.0/24",
+            "198.51.100.10/32"
+          ]
+        }
+      ]
+    }
+  },
+  "tuning_notes": [
+    "Replace example CIDRs with enterprise NAT egress ranges, VPN gateways, and break-glass bastion IPs before production rollout.",
+    "If admin routes exist under additional prefixes (for example /console, /cms, /staff), add them to admin_path_prefixes.",
+    "Keep URI transforms (Lowercase, UrlDecode) enabled to reduce bypass attempts via case or encoding tricks.",
+    "For proxied architectures, confirm WAF evaluates the true client IP. If not, align with trusted proxy configuration before enforcement.",
+    "If operationally required, create a temporary emergency allowlist entry with expiry process and change control."
+  ],
+  "deployment_notes": [
+    "Deploy initially in Detection/Log mode (where supported) to observe legitimate admin traffic patterns.",
+    "Validate no business-critical automation accesses blocked admin paths from non-allowlisted ranges.",
+    "Promote to Block mode after at least one full business cycle of clean telemetry.",
+    "Apply consistently across both Azure Front Door and Application Gateway policies to avoid control gaps.",
+    "Document ownership of trusted_source_cidrs and establish an update runbook tied to network changes."
+  ],
+  "monitoring_guidance": [
+    "Track blocked request count grouped by RequestUri and client IP to detect reconnaissance spikes.",
+    "Alert on sudden increases in blocked attempts to /admin, /wp-admin, /manage, and /internal.",
+    "Review top blocked source IPs for threat intel enrichment and potential upstream blocking.",
+    "Periodically audit allowlisted CIDRs for stale or overly broad entries.",
+    "Correlate WAF blocks with identity provider failed-login telemetry for coordinated attack detection."
+  ],
+  "false_positive_considerations": [
+    "Internal monitoring systems or synthetic probes may require explicit allowlisting if they validate admin endpoints.",
+    "Shared corporate egress changes can temporarily block administrators until CIDR inventory is updated."
+  ],
+  "references": [
+    "https://learn.microsoft.com/azure/web-application-firewall/afds/waf-front-door-custom-rules",
+    "https://learn.microsoft.com/azure/web-application-firewall/ag/custom-waf-rules-overview"
+  ]
+}
