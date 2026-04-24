@@ -46,4 +46,4 @@ This document outlines the planned evolution of waf-defense-rulepacks. Items are
 - [x] FortiWeb: P
 
 ## Automated Completions
-- [x] Add Azure WAF admin path restriction baseline policy (cycle 32)
+- [x] Add Cloudflare HTTP Method Enforcement Pack (deny risky verbs) (cycle 33)
