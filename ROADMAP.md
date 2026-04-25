@@ -46,4 +46,4 @@ This document outlines the planned evolution of waf-defense-rulepacks. Items are
 - [x] FortiWeb: P
 
 ## Automated Completions
-- [x] Add Cloudflare File Upload Endpoint Hardening Pack (cycle 35)
+- [x] Add Cloudflare Directory Traversal Evasion Variant Pack (cycle 36)
