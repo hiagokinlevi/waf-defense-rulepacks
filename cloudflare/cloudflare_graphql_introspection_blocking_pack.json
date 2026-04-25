@@ -1,0 +1,50 @@
+{
+  "name": "Cloudflare GraphQL Introspection Blocking Pack",
+  "vendor": "cloudflare",
+  "description": "Detects and blocks GraphQL introspection probes targeting __schema and __type fields to reduce API schema reconnaissance exposure.",
+  "objective": "Prevent unauthenticated or unapproved schema discovery attempts against GraphQL endpoints by identifying common introspection query patterns and enforcing controlled mitigation.",
+  "risk_mitigated": "Attackers often use GraphQL introspection to enumerate object types, operations, and relationships, enabling faster exploit development, sensitive data discovery, and targeted abuse of API business logic.",
+  "severity": "high",
+  "maturity": "production",
+  "tags": [
+    "api",
+    "graphql",
+    "introspection",
+    "reconnaissance",
+    "cloudflare-waf"
+  ],
+  "rules": [
+    {
+      "id": "cf-graphql-introspection-uri-query",
+      "description": "Match GraphQL introspection markers in URI query strings.",
+      "expression": "(http.request.uri.path contains \"/graphql\" and (lower(http.request.uri.query) contains \"__schema\" or lower(http.request.uri.query) contains \"__type\"))",
+      "action": "block",
+      "enabled": true
+    },
+    {
+      "id": "cf-graphql-introspection-body",
+      "description": "Match GraphQL introspection markers in request body payloads.",
+      "expression": "(http.request.uri.path contains \"/graphql\" and (lower(http.request.body.raw) contains \"__schema\" or lower(http.request.body.raw) contains \"__type\"))",
+      "action": "block",
+      "enabled": true
+    }
+  ],
+  "tuning_notes": [
+    "If introspection is required for trusted users (e.g., internal tooling), scope exceptions by IP allowlist, authenticated session attributes, or dedicated non-public endpoint.",
+    "Consider limiting matching to known GraphQL paths (for example /graphql, /api/graphql) to reduce noise from unrelated traffic.",
+    "If clients submit persisted queries without raw operation names, validate observed payload shapes before broadening expressions.",
+    "Use challenge action for ambiguous traffic patterns before moving to full block in high-variance environments."
+  ],
+  "deployment_notes": [
+    "Roll out in phases: start in log mode (or simulate via disabled block rule and Security Events review), then challenge mode, then enforce block after validation.",
+    "Baseline at least 7 days of normal API traffic to identify legitimate tooling or CI workflows that still rely on introspection.",
+    "Coordinate with API owners before enforcement to confirm production clients do not require runtime introspection.",
+    "Promote to block only after false positives are reviewed and explicit allow rules are in place for approved sources."
+  ],
+  "monitoring_guidance": [
+    "Track Security Events for matched expressions containing __schema or __type and alert on spikes by source IP, ASN, and user agent.",
+    "Monitor block/challenge ratios and review top GraphQL endpoints hit to identify targeted reconnaissance campaigns.",
+    "Correlate detections with authentication logs and API error telemetry to confirm malicious probing versus misconfigured clients.",
+    "After enablement, periodically sample blocked payloads to validate continued effectiveness and refine exceptions safely."
+  ]
+}
