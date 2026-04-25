@@ -1,0 +1,79 @@
+{
+  "name": "Cloudflare Directory Traversal Evasion Variants Pack",
+  "slug": "cloudflare-directory-traversal-evasion-variants",
+  "vendor": "cloudflare",
+  "version": "1.0.0",
+  "summary": "Detects encoded and mixed-encoding path traversal bypass attempts including percent-encoding, double-encoding, and backslash normalization evasions.",
+  "objective": "Improve detection of traversal payload variants that evade naive ../ matching by leveraging URI decoding and normalization-aware expressions.",
+  "risk_mitigated": [
+    "Unauthorized file access via path traversal",
+    "Traversal bypass through encoded dot segments",
+    "Windows separator and mixed-normalization bypass attempts"
+  ],
+  "severity": "high",
+  "maturity": "production",
+  "tags": [
+    "path-traversal",
+    "directory-traversal",
+    "encoding-evasion",
+    "cloudflare-waf",
+    "virtual-patch"
+  ],
+  "default_mode": "log",
+  "recommended_enforcement_path": [
+    "log",
+    "managed_challenge",
+    "block"
+  ],
+  "rules": [
+    {
+      "id": "cf-dt-ev-001",
+      "description": "Encoded traversal sequences in URI path or query (single-encoding variants such as %2e%2e%2f, %2e%2e/)",
+      "expression": "(lower(url.path) contains \"%2e%2e%2f\") or (lower(url.path) contains \"%2e%2e/\") or (lower(url.query) contains \"%2e%2e%2f\") or (lower(url.query) contains \"%2e%2e/\")",
+      "action": "log",
+      "enabled": true
+    },
+    {
+      "id": "cf-dt-ev-002",
+      "description": "Double-encoded traversal indicators (e.g., %252e%252e%252f)",
+      "expression": "(lower(url.path) contains \"%252e%252e%252f\") or (lower(url.query) contains \"%252e%252e%252f\") or (lower(url.path) contains \"%255c\") or (lower(url.query) contains \"%255c\")",
+      "action": "log",
+      "enabled": true
+    },
+    {
+      "id": "cf-dt-ev-003",
+      "description": "Backslash and mixed separator traversal attempts (Windows-style and normalization bypass patterns)",
+      "expression": "(lower(url.path) contains \"..\\\\\") or (lower(url.path) contains \"..%5c\") or (lower(url.query) contains \"..\\\\\") or (lower(url.query) contains \"..%5c\")",
+      "action": "managed_challenge",
+      "enabled": true
+    },
+    {
+      "id": "cf-dt-ev-004",
+      "description": "Normalized traversal in decoded URI path",
+      "expression": "(lower(http.request.uri.path) contains \"../\") or (lower(http.request.uri.query) contains \"../\")",
+      "action": "managed_challenge",
+      "enabled": true
+    }
+  ],
+  "tuning_notes": [
+    "Start in log mode globally for at least 7 days and review by endpoint, user agent, and source ASN.",
+    "If static/CDN asset paths include encoded characters by design, carve out known-safe prefixes (for example: /static/, /assets/, /content/) before enforcing challenge/block.",
+    "Exclude trusted internal scanners and synthetic monitoring IPs to avoid noisy detections.",
+    "Promote only high-confidence rules (double-encoding and backslash variants) to managed_challenge first, then block after validation."
+  ],
+  "deployment_notes": [
+    "Deploy in production-like staging with mirrored traffic and WAF event logging enabled.",
+    "Validate that no application routes intentionally use dot-segment-like encoded path components.",
+    "Roll out in phases: log -> managed_challenge -> block, with rollback triggers tied to 4xx anomaly spikes and synthetic test failures.",
+    "Track hit rate by rule ID to determine which expressions can be safely tightened or exempted per application surface."
+  ],
+  "monitoring_guidance": [
+    "Alert on sudden increases in cf-dt-ev-002 and cf-dt-ev-003 from single IPs or narrow ASNs.",
+    "Correlate traversal detections with origin 403/404 spikes and sensitive file request patterns.",
+    "Review challenged requests for credentialed sessions to identify possible account takeover plus post-auth traversal behavior."
+  ],
+  "references": [
+    "https://owasp.org/www-community/attacks/Path_Traversal",
+    "https://developers.cloudflare.com/waf/custom-rules/"
+  ]
+}
