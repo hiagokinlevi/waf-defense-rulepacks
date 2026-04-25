@@ -1,0 +1,80 @@
+{
+  "name": "Cloudflare File Upload Endpoint Hardening Pack",
+  "vendor": "cloudflare",
+  "service": "waf",
+  "version": "1.0.0",
+  "objective": "Protect common file upload endpoints from method abuse and malformed upload traffic by enforcing POST-only access and optional content-type restrictions.",
+  "risk_mitigated": [
+    "Upload endpoint abuse via unsupported HTTP methods",
+    "Unintended file submission paths receiving arbitrary payloads",
+    "Malformed or suspicious multipart/form-data upload attempts",
+    "Automated probing and abuse of file APIs"
+  ],
+  "severity": "high",
+  "maturity": "stable",
+  "tags": [
+    "cloudflare",
+    "file-upload",
+    "api-security",
+    "hardening",
+    "abuse-prevention"
+  ],
+  "rules": [
+    {
+      "id": "cf-upload-method-post-only",
+      "description": "Allow only POST requests on known upload routes.",
+      "expression": "(http.request.uri.path matches \"^/(upload|uploads|api/files|api/upload)(/.*)?$\" and http.request.method ne \"POST\")",
+      "action": "block",
+      "enabled": true
+    },
+    {
+      "id": "cf-upload-content-type-allowlist",
+      "description": "Optional: enforce expected upload content-type values for upload routes.",
+      "expression": "(http.request.uri.path matches \"^/(upload|uploads|api/files|api/upload)(/.*)?$\" and http.request.method eq \"POST\" and not lower(http.request.headers[\"content-type\"][0]) matches \"^(multipart/form-data|application/octet-stream|application/pdf|image/|text/plain)\")",
+      "action": "log",
+      "enabled": false
+    },
+    {
+      "id": "cf-upload-missing-content-type",
+      "description": "Flag upload POST requests missing content-type header.",
+      "expression": "(http.request.uri.path matches \"^/(upload|uploads|api/files|api/upload)(/.*)?$\" and http.request.method eq \"POST\" and len(http.request.headers[\"content-type\"]) eq 0)",
+      "action": "log",
+      "enabled": true
+    }
+  ],
+  "tuning_notes": [
+    "Update URI regex to match your exact upload routes and exclude non-upload POST endpoints.",
+    "Start content-type allowlist rule in log mode; tighten allowlist values after observing normal traffic.",
+    "If clients include charset/boundary parameters, ensure regex accommodates them.",
+    "Pair this pack with Cloudflare rate limiting and origin-side max body size enforcement for full abuse resistance."
+  ],
+  "deployment_guidance": [
+    "Deploy in log/simulate mode first for at least 7 days.",
+    "Validate allowed upload clients (web, mobile, API integrations) and expected content types.",
+    "Promote POST-only rule to block once false positives are cleared.",
+    "Keep optional content-type rule in log or managed challenge before switching to block.",
+    "Coordinate with application controls: authentication, malware scanning, extension/MIME validation, and object storage lifecycle policies."
+  ],
+  "monitoring": {
+    "primary_signals": [
+      "Count of blocked non-POST requests to upload paths",
+      "Count of upload POSTs with missing content-type",
+      "Count of content-type allowlist mismatches",
+      "Top source IPs/ASNs triggering upload rule events"
+    ],
+    "dashboards": [
+      "Cloudflare Security Events filtered by upload route regex",
+      "WAF action trend by rule ID for upload hardening pack"
+    ],
+    "alerting": [
+      "Spike in non-POST blocks against upload endpoints",
+      "Sustained increase in content-type mismatch events",
+      "Sudden burst of upload traffic from new geographies or ASNs"
+    ]
+  },
+  "references": [
+    "https://developers.cloudflare.com/waf/custom-rules/",
+    "https://developers.cloudflare.com/ruleset-engine/rules-language/",
+    "https://owasp.org/www-community/vulnerabilities/Unrestricted_File_Upload"
+  ]
+}
