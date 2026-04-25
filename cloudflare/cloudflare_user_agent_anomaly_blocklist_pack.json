@@ -1,0 +1,70 @@
+{
+  "name": "Cloudflare User-Agent Anomaly Blocklist Starter Pack",
+  "vendor": "cloudflare",
+  "service": "waf_custom_rules",
+  "category": "threat_detection",
+  "description": "Detect and mitigate clearly malicious or scanner-like User-Agent patterns (including empty UA and common exploit tooling identifiers). Start in log/challenge mode to tune before any block enforcement.",
+  "objective": "Reduce automated reconnaissance and exploit probing traffic that advertises high-risk User-Agent fingerprints.",
+  "risk_mitigated": "Scanner-led vulnerability discovery, opportunistic exploit attempts, and noisy abusive automation.",
+  "severity": "medium",
+  "maturity": "beta",
+  "tags": [
+    "cloudflare",
+    "user-agent",
+    "scanner",
+    "bot",
+    "reconnaissance",
+    "custom-rules"
+  ],
+  "rules": [
+    {
+      "id": "cf-ua-anomaly-empty",
+      "name": "Empty or missing User-Agent",
+      "expression": "(not len(http.user_agent) > 0)",
+      "action": "log",
+      "enabled": true,
+      "description": "Flags requests without a User-Agent header. Common in low-effort scanners and scripted abuse.",
+      "priority": 100
+    },
+    {
+      "id": "cf-ua-anomaly-scanner-signatures",
+      "name": "Known scanner or exploit-tool User-Agent signatures",
+      "expression": "(lower(http.user_agent) contains \"sqlmap\" or lower(http.user_agent) contains \"nikto\" or lower(http.user_agent) contains \"nmap\" or lower(http.user_agent) contains \"masscan\" or lower(http.user_agent) contains \"acunetix\" or lower(http.user_agent) contains \"nessus\" or lower(http.user_agent) contains \"openvas\" or lower(http.user_agent) contains \"wpscan\" or lower(http.user_agent) contains \"gobuster\" or lower(http.user_agent) contains \"dirbuster\" or lower(http.user_agent) contains \"ffuf\" or lower(http.user_agent) contains \"zgrab\" or lower(http.user_agent) contains \"whatweb\")",
+      "action": "managed_challenge",
+      "enabled": true,
+      "description": "Challenges traffic that self-identifies as widely used scanning or exploit tooling.",
+      "priority": 110
+    }
+  ],
+  "deployment_notes": [
+    "Phase 1 (recommended): keep empty-UA rule in log mode and scanner-signature rule in managed_challenge mode.",
+    "Phase 2: review 7-14 days of security events; only move specific high-confidence signatures to block after validating no business automation impact.",
+    "Prefer scoped exceptions (source IP/service account/path) over broad User-Agent allowlists.",
+    "Minimal Terraform example (Cloudflare custom rule expression): resource \"cloudflare_ruleset\" \"ua_anomaly\" { kind = \"zone\" phase = \"http_request_firewall_custom\" name = \"ua-anomaly\" zone_id = var.zone_id rules { action = \"managed_challenge\" expression = \"(lower(http.user_agent) contains \\\"sqlmap\\\" or lower(http.user_agent) contains \\\"nikto\\\")\" description = \"Challenge known scanner UAs\" enabled = true } }"
+  ],
+  "tuning_notes": [
+    "Do not immediately block all empty User-Agent traffic; some uptime monitors, legacy integrations, or internal health checks may omit UA.",
+    "Start with managed_challenge for scanner signatures to reduce false positives from authorized security testing.",
+    "If your org performs sanctioned scanning, exempt known scanner source ranges or authenticated test paths instead of disabling the rule globally.",
+    "Correlate hits with ASN, request rate, URI entropy, and threat score before escalating to block.",
+    "Periodically review signature list and remove stale terms that generate benign traffic in your environment."
+  ],
+  "monitoring": {
+    "dashboards": [
+      "Cloudflare Security Events: filter by ruleset name and rule ID",
+      "Top User-Agent strings triggering cf-ua-anomaly-* rules",
+      "Challenge solve rate and repeat offender IPs"
+    ],
+    "alerts": [
+      "Spike in empty User-Agent matches over baseline",
+      "Sustained scanner-signature events from single ASN or /24",
+      "Drop in challenge solve rate indicating non-human automated probing"
+    ],
+    "review_cadence": "weekly"
+  },
+  "references": [
+    "https://developers.cloudflare.com/waf/custom-rules/",
+    "https://developers.cloudflare.com/terraform/additional-configurations/waf-custom-rules/"
+  ],
+  "version": "1.0.0"
+}
