@@ -46,4 +46,4 @@ This document outlines the planned evolution of waf-defense-rulepacks. Items are
 - [x] FortiWeb: P
 
 ## Automated Completions
-- [x] Add Cloudflare JWT Authorization Header Enforcement Pack (cycle 34)
+- [x] Add Cloudflare File Upload Endpoint Hardening Pack (cycle 35)
