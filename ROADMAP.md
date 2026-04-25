@@ -46,4 +46,4 @@ This document outlines the planned evolution of waf-defense-rulepacks. Items are
 - [x] FortiWeb: P
 
 ## Automated Completions
-- [x] Add Cloudflare GraphQL introspection blocking pack (cycle 37)
+- [x] Add Cloudflare User-Agent anomaly blocklist starter pack (cycle 38)
