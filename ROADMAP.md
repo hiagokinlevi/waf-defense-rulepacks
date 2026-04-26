@@ -46,4 +46,4 @@ This document outlines the planned evolution of waf-defense-rulepacks. Items are
 - [x] FortiWeb: P
 
 ## Automated Completions
-- [x] Add Cloudflare Origin Access Lockdown Pack (allowlisted edge-only ingress) (cycle 39)
+- [x] Add AWS WAF Admin Surface Restriction pack (allowlist-sensitive paths) (cycle 40)
