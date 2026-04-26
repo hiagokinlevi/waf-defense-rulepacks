@@ -1,0 +1,85 @@
+{
+  "name": "Cloudflare Origin Access Lockdown Pack",
+  "vendor": "cloudflare",
+  "service": "waf_custom_rules",
+  "category": "origin-hardening",
+  "severity": "high",
+  "maturity": "stable",
+  "description": "Reduces direct-origin exposure by enforcing edge-only ingress patterns for sensitive hostnames and paths. Detects/block requests with unexpected Host headers, direct-IP host access, and missing edge-identifying controls where applicable.",
+  "objective": "Ensure origin-facing services only accept intended Cloudflare edge traffic patterns and approved integration exceptions.",
+  "risk_mitigated": [
+    "Origin IP bypass of Cloudflare security controls",
+    "Host header abuse and routing override attempts",
+    "Direct-origin probing of sensitive endpoints",
+    "Unauthorized integrations calling origin directly"
+  ],
+  "assumptions": [
+    "Sensitive hostnames and path patterns are known and can be maintained in allowlists.",
+    "Operators can provide trusted integration source IPs or explicit bypass conditions.",
+    "Cloudflare custom rules are deployed at the relevant zone(s)."
+  ],
+  "deployment_notes": [
+    "Start all rules in log mode for 7-14 days before enforcing block actions.",
+    "Review Security Events for legitimate traffic lacking expected edge-identifying headers.",
+    "Introduce explicit skip/bypass conditions for trusted third-party integrations as needed.",
+    "After tuning, promote high-confidence rules to block while keeping lower-confidence heuristics in log/challenge.",
+    "Pair with network-level origin ACLs (cloud provider security groups, firewalls) for defense in depth."
+  ],
+  "tuning_notes": [
+    "Populate allowed hostnames list with exact production hostnames; avoid broad wildcard patterns when possible.",
+    "If using custom health checks/monitors, add scoped exceptions by source IP and path.",
+    "For partner/API integrations that must bypass edge, require strict IP allowlisting and dedicated auth controls.",
+    "If legacy clients omit expected headers, create narrow exceptions (path + method + source constraints) rather than global disables.",
+    "Continuously compare blocked/logged events against known deployment automation and synthetic monitoring traffic."
+  ],
+  "monitoring_guidance": [
+    "Track spikes in matches for direct-IP host header rule and unexpected host rule.",
+    "Alert on repeated origin-lockdown hits against admin/auth/private API paths.",
+    "Measure false positive rate by integration type and exception rule usage.",
+    "Confirm blocked events correlate with non-edge source patterns in upstream network logs."
+  ],
+  "references": [
+    "https://developers.cloudflare.com/waf/custom-rules/",
+    "https://developers.cloudflare.com/fundamentals/security/protect-your-origin-server/",
+    "https://developers.cloudflare.com/ruleset-engine/rules-language/fields/reference/"
+  ],
+  "rules": [
+    {
+      "id": "cf-origin-lockdown-unexpected-host-sensitive-scope",
+      "description": "Log/block requests to sensitive paths when Host header is not in approved list.",
+      "expression": "(http.request.uri.path matches \"^/(admin|internal|private|auth|api/v[0-9]+/admin)(/.*)?$\") and not (lower(http.host) in {\"app.example.com\" \"api.example.com\" \"admin.example.com\"})",
+      "action": "log",
+      "enabled": true
+    },
+    {
+      "id": "cf-origin-lockdown-direct-ip-host-header",
+      "description": "Log/block likely direct-origin access attempts using IP-literal Host headers.",
+      "expression": "http.host matches \"^(?:\\d{1,3}\\.){3}\\d{1,3}$\" or http.host contains \":" ,
+      "action": "log",
+      "enabled": true
+    },
+    {
+      "id": "cf-origin-lockdown-missing-cf-connecting-ip-sensitive",
+      "description": "Log/block sensitive path requests missing expected Cloudflare edge-identifying header.",
+      "expression": "(http.request.uri.path matches \"^/(admin|internal|private|auth)(/.*)?$\") and not any(lower(http.request.headers.names[*])[*] eq \"cf-connecting-ip\")",
+      "action": "log",
+      "enabled": true
+    },
+    {
+      "id": "cf-origin-lockdown-trusted-integration-bypass-template",
+      "description": "Template bypass condition for trusted integrations (keep disabled until explicitly configured).",
+      "expression": "(ip.src in {203.0.113.10 198.51.100.22}) and (http.request.uri.path starts_with \"/partner-ingest\")",
+      "action": "skip",
+      "action_parameters": {
+        "products": [
+          "waf"
+        ]
+      },
+      "enabled": false
+    }
+  ],
+  "terraform_example": {
+    "description": "Example Cloudflare custom ruleset deploying this pack in default log mode. Replace zone_id and host/path values before production.",
+    "snippet": "resource \"cloudflare_ruleset\" \"origin_access_lockdown\" {\n  zone_id = var.zone_id\n  name    = \"Origin Access Lockdown Pack\"\n  kind    = \"zone\"\n  phase   = \"http_request_firewall_custom\"\n\n  rules {\n    ref         = \"cf-origin-lockdown-unexpected-host-sensitive-scope\"\n    description = \"Unexpected host on sensitive paths\"\n    expression  = \"(http.request.uri.path matches \\\"^/(admin|internal|private|auth|api/v[0-9]+/admin)(/.*)?$\\\") and not (lower(http.host) in {\\\"app.example.com\\\" \\\"api.example.com\\\" \\\"admin.example.com\\\"})\"\n    action      = \"log\"\n    enabled     = true\n  }\n\n  rules {\n    ref         = \"cf-origin-lockdown-direct-ip-host-header\"\n    description = \"Direct-IP or malformed Host header\"\n    expression  = \"http.host matches \\\"^(?:\\\\d{1,3}\\\\.){3}\\\\d{1,3}$\\\" or http.host contains \\\":\\\"\"\n    action      = \"log\"\n    enabled     = true\n  }\n\n  rules {\n    ref         = \"cf-origin-lockdown-missing-cf-connecting-ip-sensitive\"\n    description = \"Sensitive path missing CF-Connecting-IP\"\n    expression  = \"(http.request.uri.path matches \\\"^/(admin|internal|private|auth)(/.*)?$\\\") and not any(lower(http.request.headers.names[*])[*] eq \\\"cf-connecting-ip\\\")\"\n    action      = \"log\"\n    enabled     = true\n  }\n}\n"
+  }
+}
