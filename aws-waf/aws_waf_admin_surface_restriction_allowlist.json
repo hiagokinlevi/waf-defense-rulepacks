@@ -1,0 +1,53 @@
+{
+  "name": "AWS WAF Admin Surface Restriction (CIDR Allowlist)",
+  "slug": "aws-waf-admin-surface-restriction-allowlist",
+  "vendor": "aws-waf",
+  "version": "1.0.0",
+  "objective": "Restrict access to sensitive administrative paths (for example /admin, /wp-admin, and /manage) so only approved source CIDRs can reach them.",
+  "description": "This pack enforces a path-based administrative surface restriction policy in AWS WAF. Requests to known admin endpoints are allowed only when they originate from trusted source CIDR ranges. Non-allowlisted sources are blocked (or counted during rollout). This reduces exposure of high-value interfaces to opportunistic scanning, credential stuffing, and targeted exploitation.",
+  "severity": "high",
+  "maturity": "stable",
+  "risk_mitigated": [
+    "Administrative interface exposure",
+    "Credential stuffing against admin login paths",
+    "Internet-wide scanner access to privileged endpoints"
+  ],
+  "false_positive_tuning_notes": [
+    "Start in COUNT mode and review sampled requests for at least 7 days before BLOCK.",
+    "Validate all legitimate administrator egress IPs (VPN, office, bastion, SASE, break-glass networks) are present in the allowlist.",
+    "If administrators are mobile or use rotating residential IPs, front admin access through a fixed egress (VPN/ZTNA) before enforcing BLOCK.",
+    "Tune path matching for your stack. Include exact paths and prefixes used by your framework/admin tooling.",
+    "Exclude health checks or internal probes if they hit restricted paths from non-allowlisted ranges."
+  ],
+  "rollout_guidance": [
+    "Phase 1 (observe): Deploy with rule action COUNT on non-allowlisted admin-path requests.",
+    "Phase 2 (verify): Confirm expected admin traffic is allowlisted and no critical workflows are impacted.",
+    "Phase 3 (enforce): Switch action to BLOCK and monitor blocked request metrics and sampled logs.",
+    "Phase 4 (harden): Narrow allowed CIDRs further and add alerting for repeated blocked attempts."
+  ],
+  "labels": [
+    "admin-surface",
+    "allowlist",
+    "aws-waf",
+    "custom-rule",
+    "hardening"
+  ],
+  "rules": {
+    "ip_set_name": "admin_trusted_cidrs",
+    "paths_restricted": [
+      "/admin",
+      "/wp-admin",
+      "/manage"
+    ],
+    "logic_summary": "If URI path starts with a restricted admin path AND source IP is NOT in approved CIDR IP set, then COUNT (initial) or BLOCK (enforced)."
+  },
+  "terraform_example": {
+    "description": "Attach a staged admin-surface restriction rule to an AWS WAFv2 WebACL. Deploy COUNT first, then flip to BLOCK after validation.",
+    "snippet": "resource \"aws_wafv2_ip_set\" \"admin_trusted\" {\n  name               = \"admin-trusted-cidrs\"\n  scope              = \"REGIONAL\"\n  ip_address_version = \"IPV4\"\n  addresses          = [\"203.0.113.10/32\", \"198.51.100.0/24\"]\n}\n\n# Toggle for staged rollout\nvariable \"admin_surface_enforcement\" {\n  type        = string\n  default     = \"COUNT\"\n  validation {\n    condition     = contains([\"COUNT\", \"BLOCK\"], var.admin_surface_enforcement)\n    error_message = \"admin_surface_enforcement must be COUNT or BLOCK\"\n  }\n}\n\nresource \"aws_wafv2_web_acl\" \"this\" {\n  name  = \"example-web-acl\"\n  scope = \"REGIONAL\"\n\n  default_action { allow {} }\n\n  rule {\n    name     = \"restrict-admin-surface-to-trusted-cidrs\"\n    priority = 50\n\n    # Start with COUNT, then switch to BLOCK\n    dynamic \"action\" {\n      for_each = var.admin_surface_enforcement == \"BLOCK\" ? [1] : []\n      content { block {} }\n    }\n    dynamic \"action\" {\n      for_each = var.admin_surface_enforcement == \"COUNT\" ? [1] : []\n      content { count {} }\n    }\n\n    statement {\n      and_statement {\n        statement {\n          or_statement {\n            statement {\n              byte_match_statement {\n                field_to_match { uri_path {} }\n                positional_constraint = \"STARTS_WITH\"\n                search_string         = \"/admin\"\n                text_transformation {\n                  priority = 0\n                  type     = \"NONE\"\n                }\n              }\n            }\n            statement {\n              byte_match_statement {\n                field_to_match { uri_path {} }\n                positional_constraint = \"STARTS_WITH\"\n                search_string         = \"/wp-admin\"\n                text_transformation {\n                  priority = 0\n                  type     = \"NONE\"\n                }\n              }\n            }\n            statement {\n              byte_match_statement {\n                field_to_match { uri_path {} }\n                positional_constraint = \"STARTS_WITH\"\n                search_string         = \"/manage\"\n                text_transformation {\n                  priority = 0\n                  type     = \"NONE\"\n                }\n              }\n            }\n          }\n        }\n\n        statement {\n          not_statement {\n            statement {\n              ip_set_reference_statement {\n                arn = aws_wafv2_ip_set.admin_trusted.arn\n              }\n            }\n          }\n        }\n      }\n    }\n\n    visibility_config {\n      cloudwatch_metrics_enabled = true\n      metric_name                = \"restrictAdminSurfaceToTrustedCidrs\"\n      sampled_requests_enabled   = true\n    }\n  }\n\n  visibility_config {\n    cloudwatch_metrics_enabled = true\n    metric_name                = \"exampleWebAcl\"\n    sampled_requests_enabled   = true\n  }\n}\n"
+  },
+  "deployment_notes": [
+    "Use REGIONAL scope for ALB/API Gateway/App Runner and CLOUDFRONT scope for CloudFront distributions.",
+    "Ensure rule priority places this control before broad allow rules that might otherwise bypass intent.",
+    "Enable sampled requests and CloudWatch metrics to validate impact before enforcement."
+  ]
+}
