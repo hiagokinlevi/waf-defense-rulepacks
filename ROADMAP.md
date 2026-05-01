@@ -46,4 +46,4 @@ This document outlines the planned evolution of waf-defense-rulepacks. Items are
 - [x] FortiWeb: P
 
 ## Automated Completions
-- [x] Add Cloudflare XML External Entity (XXE) request pattern defense pack (cycle 41)
+- [x] Add Cloudflare Open Redirect Parameter Guard Pack (cycle 42)
