@@ -46,4 +46,4 @@ This document outlines the planned evolution of waf-defense-rulepacks. Items are
 - [x] FortiWeb: P
 
 ## Automated Completions
-- [x] Add Cloudflare Open Redirect Parameter Guard Pack (cycle 42)
+- [x] Add AWS WAF GeoMatch Country Allow/Deny Baseline Pack (cycle 43)
