@@ -1,0 +1,94 @@
+{
+  "name": "AWS WAF GeoMatch Country Allow/Deny Baseline",
+  "slug": "aws-waf-geomatch-country-allow-deny-baseline",
+  "vendor": "aws-waf",
+  "version": "1.0.0",
+  "objective": "Provide a deployable baseline for geographic request filtering using AWS WAF GeoMatch with explicit rollout safety (COUNT first, then BLOCK).",
+  "risk_mitigated": "Reduces exposure to abusive or unauthorized traffic from countries where the application has no business requirement, and supports compliance-driven traffic restrictions.",
+  "severity": "medium",
+  "maturity": "baseline",
+  "tags": [
+    "aws-waf",
+    "geomatch",
+    "geo-restriction",
+    "access-control",
+    "baseline"
+  ],
+  "deployment_notes": [
+    "Start with COUNT action for at least 7-14 days to establish legitimate country traffic patterns.",
+    "Review sampled requests and WAF logs grouped by country before moving to BLOCK.",
+    "If adopting deny-list mode, initially include only countries with clear abuse patterns.",
+    "If adopting allow-list mode, validate multinational user journeys, CDN egress behavior, and third-party integrations first.",
+    "Promote to BLOCK in phased environments (dev -> staging -> production) with rollback prepared."
+  ],
+  "tuning_notes": [
+    "Multinational applications should prefer deny-list mode to avoid accidental customer lockout.",
+    "Allow-list mode is best for region-locked services or strict compliance boundaries.",
+    "Confirm geolocation behavior for VPN/mobile carrier traffic and satellite offices.",
+    "Account for synthetic monitoring, CI/CD probes, and partner APIs that may originate outside primary countries.",
+    "Keep an exception process (temporary country allowance or scoped path exceptions) for business continuity."
+  ],
+  "monitoring_guidance": [
+    "Track allowed/count/blocked requests by country code and URI path.",
+    "Alert on sudden spikes from newly blocked countries to detect evasion or misclassification.",
+    "Monitor conversion/login/support metrics for regions after enabling BLOCK to catch business impact quickly."
+  ],
+  "pack": {
+    "type": "aws_wafv2_rule_snippets",
+    "default_action_guidance": "Use COUNT initially; switch to BLOCK only after traffic validation.",
+    "rules": [
+      {
+        "name": "geo-denylist-count-baseline",
+        "priority": 210,
+        "metric_name": "geoDenyListCount",
+        "mode": "COUNT",
+        "statement": {
+          "geo_match_statement": {
+            "country_codes": [
+              "RU",
+              "KP"
+            ]
+          }
+        },
+        "notes": "Starter deny-list example. Replace country_codes with environment-specific risk/compliance list."
+      },
+      {
+        "name": "geo-allowlist-count-baseline",
+        "priority": 211,
+        "metric_name": "geoAllowListCount",
+        "mode": "COUNT",
+        "statement": {
+          "not_statement": {
+            "statement": {
+              "geo_match_statement": {
+                "country_codes": [
+                  "US",
+                  "CA",
+                  "GB"
+                ]
+              }
+            }
+          }
+        },
+        "notes": "Starter allow-list example (count traffic outside approved countries). Do not enable together with deny-list in the same ACL without intentional logic design."
+      }
+    ]
+  },
+  "terraform_examples": {
+    "description": "Attach one GeoMatch rule variant to an existing aws_wafv2_web_acl. Keep explicit priority and visibility metric names.",
+    "snippets": [
+      "# Deny-list rollout example: COUNT first\\nrule {\\n  name     = \"geo-denylist-baseline\"\\n  priority = 210\\n\\n  action {\\n    count {}\\n  }\\n\\n  statement {\\n    geo_match_statement {\\n      country_codes = [\"RU\", \"KP\"]\\n    }\\n  }\\n\\n  visibility_config {\\n    cloudwatch_metrics_enabled = true\\n    metric_name                = \"geoDenyListCount\"\\n    sampled_requests_enabled   = true\\n  }\\n}",
+      "# Deny-list enforcement: switch COUNT -> BLOCK after validation\\nrule {\\n  name     = \"geo-denylist-baseline\"\\n  priority = 210\\n\\n  action {\\n    block {}\\n  }\\n\\n  statement {\\n    geo_match_statement {\\n      country_codes = [\"RU\", \"KP\"]\\n    }\\n  }\\n\\n  visibility_config {\\n    cloudwatch_metrics_enabled = true\\n    metric_name                = \"geoDenyListBlock\"\\n    sampled_requests_enabled   = true\\n  }\\n}",
+      "# Allow-list rollout example: COUNT traffic outside approved countries\\nrule {\\n  name     = \"geo-allowlist-baseline\"\\n  priority = 211\\n\\n  action {\\n    count {}\\n  }\\n\\n  statement {\\n    not_statement {\\n      statement {\\n        geo_match_statement {\\n          country_codes = [\"US\", \"CA\", \"GB\"]\\n        }\\n      }\\n    }\\n  }\\n\\n  visibility_config {\\n    cloudwatch_metrics_enabled = true\\n    metric_name                = \"geoAllowListCount\"\\n    sampled_requests_enabled   = true\\n  }\\n}"
+    ]
+  },
+  "safety": {
+    "false_positive_risk": "medium",
+    "rollback": "Revert action from BLOCK to COUNT or disable the geo rule while preserving metrics for analysis.",
+    "prerequisites": [
+      "AWS WAFv2 WebACL already deployed",
+      "WAF logging or sampled requests enabled",
+      "Business-approved country policy and exception owner"
+    ]
+  }
+}
