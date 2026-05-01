@@ -1,0 +1,48 @@
+{
+  "name": "Cloudflare Open Redirect Parameter Guard Pack",
+  "vendor": "cloudflare",
+  "service": "waf",
+  "type": "custom_ruleset",
+  "version": "1.0.0",
+  "objective": "Detect and block open-redirect abuse by inspecting common redirect parameters for external absolute URLs and protocol-relative targets.",
+  "risk_mitigated": "Prevents phishing pivot and trust-abuse flows where attackers weaponize first-party redirect endpoints to send users to malicious destinations.",
+  "severity": "high",
+  "maturity": "production",
+  "references": [
+    "https://owasp.org/www-community/attacks/Unvalidated_Redirects_and_Forwards_Cheat_Sheet",
+    "https://developers.cloudflare.com/waf/custom-rules/"
+  ],
+  "labels": [
+    "open-redirect",
+    "phishing",
+    "redirect-parameters",
+    "cloudflare-waf"
+  ],
+  "rules": [
+    {
+      "id": "cf-open-redirect-param-absolute-or-protocol-relative",
+      "description": "Match common redirect parameters when value includes an external absolute URL or protocol-relative target.",
+      "expression": "(http.request.uri.query contains \"next=http://\" or http.request.uri.query contains \"next=https://\" or http.request.uri.query contains \"next=//\" or http.request.uri.query contains \"url=http://\" or http.request.uri.query contains \"url=https://\" or http.request.uri.query contains \"url=//\" or http.request.uri.query contains \"redirect_uri=http://\" or http.request.uri.query contains \"redirect_uri=https://\" or http.request.uri.query contains \"redirect_uri=//\" or http.request.uri.query contains \"returnUrl=http://\" or http.request.uri.query contains \"returnUrl=https://\" or http.request.uri.query contains \"returnUrl=//\")",
+      "action": "block",
+      "enabled": true
+    }
+  ],
+  "deployment_notes": [
+    "Deploy in log/challenge-compatible observation mode first (for example, clone rule with action set to log where available) for at least 7 days.",
+    "Review hit samples for legitimate identity-provider or partner redirects before enforcing block.",
+    "After tuning exceptions, switch enforcement action to block for high-confidence abuse prevention.",
+    "Roll out in phases (staging -> low-risk production paths -> full production)."
+  ],
+  "tuning_guidance": [
+    "Allowlist approved redirect destinations for known SSO/OAuth paths (for example, /oauth/callback, /sso/complete) where absolute redirect_uri usage is expected.",
+    "If your application encodes redirect targets, add explicit exceptions for safe signed/validated redirect tokens rather than broad URI exclusions.",
+    "Prefer app-side validation (same-origin or strict allowlist) and keep WAF logic as a compensating control.",
+    "Exclude trusted administrative or internal workflows only when business owners confirm necessity and logging remains enabled."
+  ],
+  "monitoring_notes": [
+    "Track rule hit rate by URI path and parameter name (next, url, redirect_uri, returnUrl) to identify abused endpoints.",
+    "Alert on sudden spikes from single ASNs/IPs or campaigns targeting login and logout flows.",
+    "Correlate blocks with downstream phishing reports, account takeover attempts, and anomalous referral telemetry.",
+    "Periodically review false positives after identity platform or routing changes."
+  ]
+}
