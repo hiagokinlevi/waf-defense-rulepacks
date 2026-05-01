@@ -1,0 +1,66 @@
+{
+  "name": "Cloudflare WAF XXE Request Pattern Defense Pack",
+  "slug": "cloudflare-waf-xxe-request-patterns",
+  "vendor": "cloudflare",
+  "service": "waf-custom-rules",
+  "version": "1.0.0",
+  "summary": "Detects and blocks high-confidence XML External Entity (XXE) indicators in request bodies and parameters using conservative request pattern matching.",
+  "objective": "Reduce XXE attack risk by identifying malicious XML DTD/entity directives and external entity retrieval patterns before XML parser processing.",
+  "risk_mitigated": [
+    "XML External Entity (XXE)",
+    "Local file disclosure via XML entities",
+    "Server-side request forgery via XML parser external entities",
+    "Out-of-band data exfiltration through XML parser features"
+  ],
+  "severity": "high",
+  "maturity": "beta",
+  "tags": [
+    "xxe",
+    "xml",
+    "injection",
+    "cloudflare",
+    "waf",
+    "owasp-a05"
+  ],
+  "references": [
+    "https://owasp.org/www-community/vulnerabilities/XML_External_Entity_(XXE)_Processing",
+    "https://portswigger.net/web-security/xxe"
+  ],
+  "rules": [
+    {
+      "id": "cf-xxe-001",
+      "description": "Block likely XXE payload markers in request body/query/cookie with conservative XML-context gating and known XML-heavy endpoint exclusions.",
+      "expression": "(http.request.method in {\"POST\" \"PUT\" \"PATCH\"} and (lower(http.request.headers[\"content-type\"][0]) contains \"xml\" or lower(http.request.body.raw) contains \"<?xml\") and (lower(http.request.body.raw) contains \"<!doctype\" or lower(http.request.body.raw) contains \"<!entity\" or lower(http.request.body.raw) contains \" system \" or lower(http.request.body.raw) contains \" public \" or lower(http.request.body.raw) contains \"file://\" or lower(http.request.body.raw) contains \"expect://\" or lower(http.request.body.raw) contains \"php://\" or lower(http.request.body.raw) contains \"gopher://\" or lower(http.request.body.raw) contains \"ftp://\" or lower(http.request.body.raw) contains \"jar:\" or lower(http.request.body.raw) contains \"xinclude\" or lower(http.request.body.raw) contains \"xml-stylesheet\")) and not (http.request.uri.path starts_with \"/soap/\" or http.request.uri.path starts_with \"/saml/\" or http.request.uri.path starts_with \"/xmlrpc\" or http.request.uri.path starts_with \"/api/xml/\")",
+      "action": "block",
+      "enabled": true,
+      "notes": "Default expression intentionally scopes to XML-like requests to reduce false positives in non-XML traffic. Endpoint exclusions are starter allowlist candidates and should be tailored per application inventory."
+    }
+  ],
+  "tuning_notes": [
+    "Start with action=log (or simulate) for 7-14 days, then move to block after validating legitimate XML workflows.",
+    "Review alerts for SOAP/SAML/XML-RPC/API-XML endpoints and add precise path exclusions where business traffic includes benign DTD/entity constructs.",
+    "If attackers shift to encoded payloads, add additional decoded/normalized variants (URL-encoded and double-encoded indicators) in a staged rollout.",
+    "Prefer narrow exclusions (exact path + method + source) instead of broad global disables to preserve protection coverage."
+  ],
+  "deployment_notes": [
+    "Deploy in log/monitor mode first to baseline normal XML parser traffic patterns.",
+    "Promote to block mode only after false-positive review with application owners for XML-heavy integrations.",
+    "Roll out progressively by zone/environment (dev -> stage -> production) and keep rollback ready via rule disable toggle.",
+    "Pair with secure parser configuration (DTD disabled, external entities disabled) for defense in depth."
+  ],
+  "monitoring_guidance": [
+    "Track blocked/logged event counts by URI path, method, ASN, country, and user agent to identify abuse clusters.",
+    "Alert on sudden spikes in XXE marker hits, especially bursts against XML endpoints or authentication-adjacent APIs.",
+    "Review top matching substrings (DOCTYPE/ENTITY/SYSTEM/PUBLIC/file:// etc.) weekly to refine signal quality.",
+    "Correlate with origin logs and application parser errors to confirm attack activity versus legitimate integration noise."
+  ],
+  "false_positive_exclusions": {
+    "known_xml_heavy_endpoints": [
+      "/soap/*",
+      "/saml/*",
+      "/xmlrpc",
+      "/api/xml/*"
+    ],
+    "guidance": "Use these as initial exclusion candidates only when validated as business-required XML traffic. Keep exclusions as specific as possible and re-validate quarterly."
+  }
+}
