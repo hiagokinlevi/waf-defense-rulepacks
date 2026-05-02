@@ -46,4 +46,4 @@ This document outlines the planned evolution of waf-defense-rulepacks. Items are
 - [x] FortiWeb: P
 
 ## Automated Completions
-- [x] Add AWS WAF GeoMatch Country Allow/Deny Baseline Pack (cycle 43)
+- [x] Add AWS WAF HTTP Method Enforcement baseline pack (cycle 44)
