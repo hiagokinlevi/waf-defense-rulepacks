@@ -1,0 +1,262 @@
+{
+  "name": "AWS WAF Referer Header Enforcement for Sensitive Paths",
+  "slug": "aws-waf-referer-header-enforcement-sensitive-paths",
+  "vendor": "aws-waf",
+  "version": "1.0.0",
+  "summary": "Enforce a required/allowlisted Referer header pattern on high-risk application paths such as /admin, /internal, and /upload.",
+  "objective": "Reduce unauthorized or automated direct access attempts to sensitive endpoints by requiring requests to originate from expected in-site navigation flows.",
+  "risk_mitigated": [
+    "Direct probing of sensitive endpoints",
+    "Low-effort scripted abuse against privileged paths",
+    "Bypass attempts that skip expected UI navigation"
+  ],
+  "severity": "medium",
+  "maturity": "beta",
+  "owner": "security-engineering",
+  "tags": [
+    "aws-waf",
+    "referer",
+    "header-validation",
+    "admin-surface",
+    "virtual-patch"
+  ],
+  "assumptions": [
+    "Application has browser-based flows where legitimate requests to sensitive endpoints normally include a Referer header.",
+    "Sensitive endpoints are primarily accessed through same-site navigation.",
+    "Traffic includes HTTPS origin/domain patterns that can be allowlisted."
+  ],
+  "false_positive_risk": "medium",
+  "false_positive_notes": [
+    "Some legitimate direct navigation (bookmarks, manually entered URLs, copied links) may omit Referer and trigger matches.",
+    "Privacy-focused browsers/extensions and strict Referrer-Policy settings may strip or reduce Referer values.",
+    "Mobile in-app browsers and SSO redirects can produce unexpected Referer values.",
+    "API/non-browser clients calling these paths may not send Referer and should be exempted or handled via separate controls."
+  ],
+  "deployment_notes": [
+    "Start with action=COUNT for all rules and enable WAF logging to validate real-world Referer behavior.",
+    "Tune allowlist patterns (domains/subdomains and path prefixes) using 7-14 days of observed legitimate traffic.",
+    "Add explicit allow rules or scope-down exclusions for known safe workflows (SSO callback flows, trusted automation, health checks).",
+    "Promote from COUNT to BLOCK only after false positives are reduced to acceptable levels and rollback is prepared.",
+    "Re-validate after application routing, domain, or Referrer-Policy changes."
+  ],
+  "monitoring": {
+    "metrics": [
+      "AWS/WAFV2 AllowedRequests",
+      "AWS/WAFV2 CountedRequests",
+      "AWS/WAFV2 BlockedRequests"
+    ],
+    "log_fields": [
+      "httpRequest.uri",
+      "httpRequest.headers",
+      "terminatingRuleId",
+      "action"
+    ],
+    "alerts": [
+      "Spike in counted requests for referer-missing or referer-invalid rules on sensitive paths",
+      "Any sustained blocked-request increase after mode switch to BLOCK"
+    ]
+  },
+  "configuration": {
+    "sensitive_path_prefixes": [
+      "/admin",
+      "/internal",
+      "/upload"
+    ],
+    "allowed_referer_regex": "^https://([a-z0-9-]+\\.)?example\\.com(/|$)",
+    "header_name": "referer",
+    "initial_action": "COUNT",
+    "enforcement_action_after_tuning": "BLOCK"
+  },
+  "rules": [
+    {
+      "id": "referer-missing-sensitive-paths",
+      "priority": 10,
+      "action": "COUNT",
+      "description": "Match requests to sensitive paths where Referer header is missing.",
+      "statement": {
+        "and_statement": {
+          "statements": [
+            {
+              "or_statement": {
+                "statements": [
+                  {
+                    "byte_match_statement": {
+                      "field_to_match": {
+                        "uri_path": {}
+                      },
+                      "positional_constraint": "STARTS_WITH",
+                      "search_string": "/admin",
+                      "text_transformations": [
+                        {
+                          "priority": 0,
+                          "type": "NONE"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "byte_match_statement": {
+                      "field_to_match": {
+                        "uri_path": {}
+                      },
+                      "positional_constraint": "STARTS_WITH",
+                      "search_string": "/internal",
+                      "text_transformations": [
+                        {
+                          "priority": 0,
+                          "type": "NONE"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "byte_match_statement": {
+                      "field_to_match": {
+                        "uri_path": {}
+                      },
+                      "positional_constraint": "STARTS_WITH",
+                      "search_string": "/upload",
+                      "text_transformations": [
+                        {
+                          "priority": 0,
+                          "type": "NONE"
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "not_statement": {
+                "statement": {
+                  "size_constraint_statement": {
+                    "field_to_match": {
+                      "single_header": {
+                        "name": "referer"
+                      }
+                    },
+                    "comparison_operator": "GT",
+                    "size": 0,
+                    "text_transformations": [
+                      {
+                        "priority": 0,
+                        "type": "NONE"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "referer-invalid-sensitive-paths",
+      "priority": 20,
+      "action": "COUNT",
+      "description": "Match requests to sensitive paths where Referer header is present but not in allowlisted pattern.",
+      "statement": {
+        "and_statement": {
+          "statements": [
+            {
+              "or_statement": {
+                "statements": [
+                  {
+                    "byte_match_statement": {
+                      "field_to_match": {
+                        "uri_path": {}
+                      },
+                      "positional_constraint": "STARTS_WITH",
+                      "search_string": "/admin",
+                      "text_transformations": [
+                        {
+                          "priority": 0,
+                          "type": "NONE"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "byte_match_statement": {
+                      "field_to_match": {
+                        "uri_path": {}
+                      },
+                      "positional_constraint": "STARTS_WITH",
+                      "search_string": "/internal",
+                      "text_transformations": [
+                        {
+                          "priority": 0,
+                          "type": "NONE"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "byte_match_statement": {
+                      "field_to_match": {
+                        "uri_path": {}
+                      },
+                      "positional_constraint": "STARTS_WITH",
+                      "search_string": "/upload",
+                      "text_transformations": [
+                        {
+                          "priority": 0,
+                          "type": "NONE"
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "size_constraint_statement": {
+                "field_to_match": {
+                  "single_header": {
+                    "name": "referer"
+                  }
+                },
+                "comparison_operator": "GT",
+                "size": 0,
+                "text_transformations": [
+                  {
+                    "priority": 0,
+                    "type": "NONE"
+                  }
+                ]
+              }
+            },
+            {
+              "not_statement": {
+                "statement": {
+                  "regex_match_statement": {
+                    "field_to_match": {
+                      "single_header": {
+                        "name": "referer"
+                      }
+                    },
+                    "regex_string": "^https://([a-z0-9-]+\\.)?example\\.com(/|$)",
+                    "text_transformations": [
+                      {
+                        "priority": 0,
+                        "type": "LOWERCASE"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "references": [
+    "https://docs.aws.amazon.com/waf/latest/developerguide/waf-rule-statements.html",
+    "https://docs.aws.amazon.com/waf/latest/developerguide/logging.html",
+    "https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Referer",
+    "https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Referrer-Policy"
+  ]
+}
