@@ -1,0 +1,129 @@
+{
+  "name": "AWS WAF HTTP Method Enforcement Baseline",
+  "slug": "aws-waf-http-method-enforcement-baseline",
+  "vendor": "aws-waf",
+  "version": "1.0.0",
+  "description": "Baseline AWS WAF custom rule pack to enforce an allowlist of expected HTTP methods and block high-risk or unused verbs. Designed for staged rollout in COUNT mode before BLOCK enforcement.",
+  "objective": "Reduce attack surface by only allowing expected HTTP methods per application surface and denying dangerous or unnecessary methods.",
+  "risk_mitigated": [
+    "HTTP verb tampering and method confusion",
+    "Reconnaissance and proxy abuse via TRACE/TRACK/CONNECT",
+    "Unexpected method abuse against web routes and APIs"
+  ],
+  "severity": "high",
+  "maturity": "beta",
+  "deployment_model": "custom-rules",
+  "products": [
+    "AWS WAF v2"
+  ],
+  "rollout_guidance": {
+    "default_action": "count",
+    "phases": [
+      "Phase 1 (COUNT, 7-14 days): enable for all protected resources and log all non-allowlisted methods.",
+      "Phase 2 (TUNE): split by path class (web vs API), add required methods (e.g., OPTIONS for CORS, HEAD for health checks), verify integrations.",
+      "Phase 3 (BLOCK): switch high-confidence rules to BLOCK and retain temporary COUNT exceptions for known legacy paths.",
+      "Phase 4 (HARDEN): remove stale exceptions and periodically review method telemetry."
+    ]
+  },
+  "false_positive_tuning_notes": [
+    "Web routes often only need GET/POST and occasionally HEAD; include HEAD if uptime probes or CDN checks use it.",
+    "APIs may require PUT/PATCH/DELETE and OPTIONS for CORS preflight. Scope broader allowlists to API path prefixes only (for example, /api/*).",
+    "If WebDAV or legacy integrations require methods such as PROPFIND or MKCOL, isolate to explicit paths and trusted source constraints.",
+    "Avoid global DELETE allowance unless business requirements are confirmed and monitored."
+  ],
+  "monitoring_guidance": [
+    "Track top blocked/count methods by URI path and host.",
+    "Alert on spikes in TRACE/TRACK/CONNECT attempts.",
+    "Review OPTIONS and HEAD counts after CORS or load balancer changes.",
+    "Correlate blocked methods with 4xx/5xx API error increases after enforcement."
+  ],
+  "rules": [
+    {
+      "id": "block-high-risk-methods",
+      "priority": 10,
+      "action": "block",
+      "statement": "Block if method is TRACE, TRACK, or CONNECT.",
+      "aws_waf_v2_example": {
+        "or_statement": {
+          "statements": [
+            {
+              "byte_match_statement": {
+                "search_string": "TRACE",
+                "field_to_match": {
+                  "method": {}
+                },
+                "text_transformations": [
+                  {
+                    "priority": 0,
+                    "type": "NONE"
+                  }
+                ],
+                "positional_constraint": "EXACTLY"
+              }
+            },
+            {
+              "byte_match_statement": {
+                "search_string": "TRACK",
+                "field_to_match": {
+                  "method": {}
+                },
+                "text_transformations": [
+                  {
+                    "priority": 0,
+                    "type": "NONE"
+                  }
+                ],
+                "positional_constraint": "EXACTLY"
+              }
+            },
+            {
+              "byte_match_statement": {
+                "search_string": "CONNECT",
+                "field_to_match": {
+                  "method": {}
+                },
+                "text_transformations": [
+                  {
+                    "priority": 0,
+                    "type": "NONE"
+                  }
+                ],
+                "positional_constraint": "EXACTLY"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "allowlist-web-methods",
+      "priority": 20,
+      "action": "block",
+      "statement": "For non-API paths, block when method is not in the web allowlist (GET, POST, HEAD).",
+      "notes": "Implement as path-scope NOT(OR(method matches allowlist)) with URI path exclusion for /api/* where needed."
+    },
+    {
+      "id": "allowlist-api-methods",
+      "priority": 30,
+      "action": "block",
+      "statement": "For /api/* paths, block when method is not in API allowlist (GET, POST, PUT, PATCH, DELETE, OPTIONS, HEAD).",
+      "notes": "Tune by API stage and service ownership; remove DELETE/PATCH where not required."
+    }
+  ],
+  "terraform_example": {
+    "description": "Minimal AWS WAF v2 rule snippet aligned to repository conventions: start with COUNT, then move to BLOCK.",
+    "snippet": "resource \"aws_wafv2_web_acl\" \"method_enforcement\" {\n  name  = \"method-enforcement-baseline\"\n  scope = \"REGIONAL\"\n\n  default_action {\n    allow {}\n  }\n\n  rule {\n    name     = \"block-high-risk-methods\"\n    priority = 10\n\n    # rollout: start in count {}, then switch to block {}\n    action {\n      count {}\n    }\n\n    statement {\n      or_statement {\n        statement {\n          byte_match_statement {\n            search_string         = \"TRACE\"\n            positional_constraint = \"EXACTLY\"\n            field_to_match { method {} }\n            text_transformation { priority = 0 type = \"NONE\" }\n          }\n        }\n        statement {\n          byte_match_statement {\n            search_string         = \"TRACK\"\n            positional_constraint = \"EXACTLY\"\n            field_to_match { method {} }\n            text_transformation { priority = 0 type = \"NONE\" }\n          }\n        }\n        statement {\n          byte_match_statement {\n            search_string         = \"CONNECT\"\n            positional_constraint = \"EXACTLY\"\n            field_to_match { method {} }\n            text_transformation { priority = 0 type = \"NONE\" }\n          }\n        }\n      }\n    }\n\n    visibility_config {\n      cloudwatch_metrics_enabled = true\n      metric_name                = \"blockHighRiskMethods\"\n      sampled_requests_enabled   = true\n    }\n  }\n\n  visibility_config {\n    cloudwatch_metrics_enabled = true\n    metric_name                = \"methodEnforcementBaseline\"\n    sampled_requests_enabled   = true\n  }\n}\n"
+  },
+  "references": [
+    "https://docs.aws.amazon.com/waf/latest/developerguide/waf-rule-statement-type-string-match.html",
+    "https://docs.aws.amazon.com/waf/latest/developerguide/waf-rule-statement-fields-list.html#waf-rule-statement-request-component-method"
+  ],
+  "tags": [
+    "aws",
+    "waf",
+    "http-method",
+    "baseline",
+    "hardening",
+    "api-security"
+  ]
+}
