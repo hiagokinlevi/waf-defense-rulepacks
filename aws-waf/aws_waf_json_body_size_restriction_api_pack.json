@@ -1,0 +1,115 @@
+{
+  "name": "AWS WAF JSON Body Size Restriction for API Endpoints",
+  "vendor": "aws",
+  "service": "wafv2",
+  "category": "api-protection",
+  "description": "Restricts oversized JSON request bodies on API paths (for example /api/*) to reduce parser abuse, resource exhaustion, and payload evasion attempts. Designed for phased rollout: count mode first, then block after tuning.",
+  "objective": "Detect and control oversized JSON bodies sent to API endpoints where large payloads are unnecessary or suspicious.",
+  "risk_mitigated": [
+    "JSON parser abuse",
+    "resource exhaustion via large request bodies",
+    "WAF inspection evasion using oversized payloads"
+  ],
+  "severity": "high",
+  "maturity": "beta",
+  "deployment_mode": "count",
+  "tags": [
+    "aws-waf",
+    "api",
+    "json",
+    "size-constraint",
+    "dos",
+    "evasion"
+  ],
+  "web_acl_rules": [
+    {
+      "name": "api-json-body-size-over-limit",
+      "priority": 100,
+      "action": {
+        "count": {}
+      },
+      "visibility_config": {
+        "sampled_requests_enabled": true,
+        "cloudwatch_metrics_enabled": true,
+        "metric_name": "apiJsonBodySizeOverLimit"
+      },
+      "statement": {
+        "and_statement": {
+          "statements": [
+            {
+              "byte_match_statement": {
+                "search_string": "/api/",
+                "field_to_match": {
+                  "uri_path": {}
+                },
+                "text_transformations": [
+                  {
+                    "priority": 0,
+                    "type": "NONE"
+                  }
+                ],
+                "positional_constraint": "STARTS_WITH"
+              }
+            },
+            {
+              "byte_match_statement": {
+                "search_string": "application/json",
+                "field_to_match": {
+                  "single_header": {
+                    "name": "content-type"
+                  }
+                },
+                "text_transformations": [
+                  {
+                    "priority": 0,
+                    "type": "LOWERCASE"
+                  }
+                ],
+                "positional_constraint": "CONTAINS"
+              }
+            },
+            {
+              "size_constraint_statement": {
+                "comparison_operator": "GT",
+                "size": 16384,
+                "field_to_match": {
+                  "json_body": {
+                    "match_pattern": {
+                      "all": {}
+                    },
+                    "match_scope": "ALL",
+                    "invalid_fallback_behavior": "MATCH"
+                  }
+                },
+                "text_transformations": [
+                  {
+                    "priority": 0,
+                    "type": "NONE"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "tuning_notes": [
+    "Default threshold is 16384 bytes (16 KB). Set per API profile: small CRUD endpoints often fit within 4-16 KB, while bulk upload/import endpoints may require higher limits.",
+    "If specific routes need larger JSON bodies, create explicit allow/exception rules (higher priority) for those exact paths before this rule.",
+    "Keep Content-Type condition to reduce noise from non-JSON requests; extend with additional JSON media types if used (for example application/merge-patch+json).",
+    "invalid_fallback_behavior is set to MATCH to treat malformed/unparsable JSON body handling defensively during rollout."
+  ],
+  "rollout_guidance": [
+    "Deploy in COUNT mode first and observe CloudWatch metrics plus sampled requests for at least 7 days.",
+    "Review top matched endpoints, client identities, and payload sizes to identify legitimate large-body traffic.",
+    "Tune thresholds and add scoped exceptions for known valid large-payload endpoints.",
+    "Switch action from COUNT to BLOCK only after false positives are understood and acceptable.",
+    "After enforcement, keep monitoring match rates and periodically revalidate endpoint size assumptions."
+  ],
+  "monitoring_guidance": [
+    "Track metric apiJsonBodySizeOverLimit for spikes by environment and deployment wave.",
+    "Correlate matches with upstream 4xx/5xx API trends and backend saturation indicators.",
+    "Alert on sudden increase from a single source IP, ASN, or user-agent cluster."
+  ]
+}
