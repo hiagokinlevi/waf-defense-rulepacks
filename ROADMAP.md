@@ -46,4 +46,4 @@ This document outlines the planned evolution of waf-defense-rulepacks. Items are
 - [x] FortiWeb: P
 
 ## Automated Completions
-- [x] Add AWS WAF Referer Header Enforcement Pack (sensitive endpoints) (cycle 45)
+- [x] Add AWS WAF JSON Body Size Restriction Pack for API Endpoints (cycle 46)
