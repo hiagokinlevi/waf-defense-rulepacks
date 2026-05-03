@@ -46,4 +46,4 @@ This document outlines the planned evolution of waf-defense-rulepacks. Items are
 - [x] FortiWeb: P
 
 ## Automated Completions
-- [x] Add AWS WAF Missing User-Agent Header Detection Pack (cycle 47)
+- [x] Add AWS WAF JA3/TLS Fingerprint Allowlist Monitoring Pack (cycle 48)
