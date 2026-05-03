@@ -1,0 +1,12 @@
+{
+  "vendor": "cloudflare",
+  "packs": [
+    {
+      "name": "Cloudflare JWT Missing/Invalid Token Enforcement for Protected API Paths",
+      "slug": "cloudflare-jwt-missing-invalid-token-enforcement",
+      "path": "cloudflare/jwt-missing-invalid-token-enforcement-pack.json",
+      "version": "1.0.0",
+      "category": "api-authentication"
+    }
+  ]
+}
