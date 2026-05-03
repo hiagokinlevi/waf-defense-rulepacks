@@ -1,0 +1,59 @@
+{
+  "name": "Cloudflare JWT Missing/Invalid Token Enforcement for Protected API Paths",
+  "slug": "cloudflare-jwt-missing-invalid-token-enforcement",
+  "vendor": "cloudflare",
+  "version": "1.0.0",
+  "description": "Enforces presence and basic structure validation of Authorization: Bearer <JWT> for sensitive API paths such as /api/private/*, /graphql, and /admin/api/*.",
+  "objective": "Reduce unauthorized access to sensitive API endpoints by requiring bearer JWTs and rejecting missing or malformed tokens before application processing.",
+  "risk_mitigated": [
+    "Unauthenticated access attempts to protected API routes",
+    "Trivial bypass using missing or malformed Authorization headers",
+    "Increased attack surface from anonymous probing of sensitive endpoints"
+  ],
+  "severity": "high",
+  "maturity": "beta",
+  "tags": [
+    "api-security",
+    "authentication",
+    "jwt",
+    "cloudflare-waf",
+    "access-control"
+  ],
+  "references": [
+    "https://developers.cloudflare.com/waf/custom-rules/",
+    "https://www.rfc-editor.org/rfc/rfc6750",
+    "https://www.rfc-editor.org/rfc/rfc7519"
+  ],
+  "rules": [
+    {
+      "id": "cf-jwt-protected-path-missing-bearer",
+      "description": "Match sensitive API paths where Authorization header is missing or does not start with Bearer.",
+      "expression": "(http.request.uri.path matches \"^/api/private(?:/.*)?$\" or http.request.uri.path eq \"/graphql\" or http.request.uri.path matches \"^/admin/api(?:/.*)?$\") and http.request.method ne \"OPTIONS\" and (not len(http.request.headers[\"authorization\"][0]) > 0 or not lower(http.request.headers[\"authorization\"][0]) starts_with \"bearer \")",
+      "action": "log"
+    },
+    {
+      "id": "cf-jwt-protected-path-malformed-token",
+      "description": "Match sensitive API paths where bearer token is present but not in basic JWT three-segment structure.",
+      "expression": "(http.request.uri.path matches \"^/api/private(?:/.*)?$\" or http.request.uri.path eq \"/graphql\" or http.request.uri.path matches \"^/admin/api(?:/.*)?$\") and http.request.method ne \"OPTIONS\" and lower(http.request.headers[\"authorization\"][0]) starts_with \"bearer \" and not (http.request.headers[\"authorization\"][0] matches \"^[Bb]earer\\s+[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+$\")",
+      "action": "log"
+    }
+  ],
+  "deployment_notes": [
+    "Deploy in log/challenge simulation mode first to baseline legitimate traffic patterns.",
+    "Review 7-14 days of events and identify integrations that omit Authorization on protected routes.",
+    "Switch action from log to block only after validating no critical client or service impact.",
+    "Roll out in stages (non-production, canary, full production) and keep rollback-ready rule versions."
+  ],
+  "tuning_guidance": [
+    "Exclude explicitly public API endpoints from protected path patterns before enabling block mode.",
+    "Keep CORS preflight (OPTIONS) exempt to avoid breaking browser negotiation.",
+    "If GraphQL supports public operations, split endpoint by hostname/path or add allow conditions for known public operations.",
+    "For service-to-service auth variants, add explicit exceptions for approved alternative auth mechanisms."
+  ],
+  "monitoring_guidance": [
+    "Track counts of rule matches by path, method, user agent, source ASN, and client application identifier.",
+    "Alert on sudden spikes in missing/invalid bearer matches that may indicate reconnaissance or auth regressions.",
+    "Monitor false positives by correlating blocked requests with application 4xx/5xx and support tickets.",
+    "Review top matched endpoints weekly and refine protected path scope and exceptions accordingly."
+  ]
+}
