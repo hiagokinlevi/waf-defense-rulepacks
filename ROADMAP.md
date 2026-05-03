@@ -46,4 +46,4 @@ This document outlines the planned evolution of waf-defense-rulepacks. Items are
 - [x] FortiWeb: P
 
 ## Automated Completions
-- [x] Add AWS WAF JA3/TLS Fingerprint Allowlist Monitoring Pack (cycle 48)
+- [x] Add Cloudflare JWT Missing/Invalid Token Enforcement Pack for Protected API Paths (cycle 49)
