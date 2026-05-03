@@ -1,0 +1,179 @@
+{
+  "name": "AWS WAF Missing User-Agent Header Detection (High-Risk Paths)",
+  "vendor": "aws-waf",
+  "version": "1.0.0",
+  "objective": "Detect and disrupt scripted probing by matching requests to high-risk application paths where the User-Agent header is absent.",
+  "risk_mitigated": "Automated reconnaissance and opportunistic exploit traffic commonly omits User-Agent headers, especially against administrative, authentication, and sensitive endpoints.",
+  "severity": "medium",
+  "maturity": "production",
+  "tuning_notes": [
+    "Start with action=count for 7-14 days to baseline legitimate traffic and identify integrations that omit User-Agent.",
+    "Review matches by URI path to confirm concentration on reconnaissance targets (e.g., /admin, /wp-admin, /login, /api/auth).",
+    "If your internal agents or legacy clients omit User-Agent, add explicit allowlist exceptions by source IP, header signature, or path.",
+    "If false positives persist, narrow scope to the most attacked paths first and expand iteratively."
+  ],
+  "deployment_notes": [
+    "Deploy this rule below explicit allowlist rules and above broad managed block rules in WebACL evaluation order.",
+    "Phase 1: count action with full logging enabled.",
+    "Phase 2: switch to block after validation and exception handling.",
+    "Coordinate rollout with API and SRE owners to avoid interrupting known automation clients."
+  ],
+  "monitoring": {
+    "metrics": [
+      "waf_missing_ua_high_risk_count",
+      "waf_missing_ua_high_risk_block",
+      "waf_missing_ua_high_risk_top_paths",
+      "waf_missing_ua_high_risk_top_source_ips"
+    ],
+    "alerts": [
+      "Alert on sudden spikes in missing User-Agent matches (>3x baseline in 15 minutes)",
+      "Alert when block volume materially increases after rule mode transition"
+    ],
+    "dashboards": [
+      "CloudWatch dashboard: missing User-Agent matches over time",
+      "Top URI paths and source IPs for this rule"
+    ]
+  },
+  "terraform": {
+    "resource_type": "aws_wafv2_web_acl",
+    "rule": {
+      "name": "missing-user-agent-high-risk-paths",
+      "priority": 70,
+      "action": {
+        "count": {}
+      },
+      "statement": {
+        "and_statement": {
+          "statements": [
+            {
+              "or_statement": {
+                "statements": [
+                  {
+                    "byte_match_statement": {
+                      "search_string": "/admin",
+                      "field_to_match": {
+                        "uri_path": {}
+                      },
+                      "text_transformations": [
+                        {
+                          "priority": 0,
+                          "type": "LOWERCASE"
+                        }
+                      ],
+                      "positional_constraint": "STARTS_WITH"
+                    }
+                  },
+                  {
+                    "byte_match_statement": {
+                      "search_string": "/wp-admin",
+                      "field_to_match": {
+                        "uri_path": {}
+                      },
+                      "text_transformations": [
+                        {
+                          "priority": 0,
+                          "type": "LOWERCASE"
+                        }
+                      ],
+                      "positional_constraint": "STARTS_WITH"
+                    }
+                  },
+                  {
+                    "byte_match_statement": {
+                      "search_string": "/login",
+                      "field_to_match": {
+                        "uri_path": {}
+                      },
+                      "text_transformations": [
+                        {
+                          "priority": 0,
+                          "type": "LOWERCASE"
+                        }
+                      ],
+                      "positional_constraint": "STARTS_WITH"
+                    }
+                  },
+                  {
+                    "byte_match_statement": {
+                      "search_string": "/signin",
+                      "field_to_match": {
+                        "uri_path": {}
+                      },
+                      "text_transformations": [
+                        {
+                          "priority": 0,
+                          "type": "LOWERCASE"
+                        }
+                      ],
+                      "positional_constraint": "STARTS_WITH"
+                    }
+                  },
+                  {
+                    "byte_match_statement": {
+                      "search_string": "/api/auth",
+                      "field_to_match": {
+                        "uri_path": {}
+                      },
+                      "text_transformations": [
+                        {
+                          "priority": 0,
+                          "type": "LOWERCASE"
+                        }
+                      ],
+                      "positional_constraint": "STARTS_WITH"
+                    }
+                  },
+                  {
+                    "byte_match_statement": {
+                      "search_string": "/.env",
+                      "field_to_match": {
+                        "uri_path": {}
+                      },
+                      "text_transformations": [
+                        {
+                          "priority": 0,
+                          "type": "LOWERCASE"
+                        }
+                      ],
+                      "positional_constraint": "STARTS_WITH"
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "not_statement": {
+                "statement": {
+                  "size_constraint_statement": {
+                    "field_to_match": {
+                      "single_header": {
+                        "name": "user-agent"
+                      }
+                    },
+                    "comparison_operator": "GT",
+                    "size": 0,
+                    "text_transformations": [
+                      {
+                        "priority": 0,
+                        "type": "NONE"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "visibility_config": {
+        "cloudwatch_metrics_enabled": true,
+        "metric_name": "missingUserAgentHighRiskPaths",
+        "sampled_requests_enabled": true
+      }
+    },
+    "notes": [
+      "Default action is count for safe rollout; switch to block after tuning.",
+      "To enforce blocking, replace action.count with action.block in your Terraform implementation."
+    ]
+  }
+}
