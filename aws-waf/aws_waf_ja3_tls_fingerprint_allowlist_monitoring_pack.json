@@ -1,0 +1,144 @@
+{
+  "name": "AWS WAF JA3/TLS Fingerprint Allowlist Monitoring Pack",
+  "slug": "aws-waf-ja3-tls-fingerprint-allowlist-monitoring-pack",
+  "vendor": "aws-waf",
+  "product": "AWS WAF v2",
+  "summary": "Monitors high-sensitivity endpoints for clients whose TLS/JA3 fingerprint context does not match a trusted allowlist, starting in COUNT mode to safely baseline and tune before any selective BLOCK enforcement.",
+  "objective": "Harden sensitive application surfaces against automation and spoofed clients by using TLS fingerprint context as a low-risk, production-first anti-bot signal.",
+  "risk_mitigated": [
+    "Credential stuffing and scripted abuse using non-standard client TLS stacks",
+    "Low-effort bot traffic targeting login, account recovery, and payment flows",
+    "Client impersonation attempts that diverge from known app/browser network fingerprints"
+  ],
+  "severity": "medium",
+  "maturity": "beta",
+  "status": "active",
+  "tags": [
+    "aws",
+    "waf",
+    "ja3",
+    "tls-fingerprint",
+    "bot-mitigation",
+    "count-mode",
+    "progressive-enforcement"
+  ],
+  "assumptions": [
+    "AWS WAF logging is enabled and monitored via CloudWatch Logs, Kinesis Firehose, or S3/Athena.",
+    "High-sensitivity endpoints are identifiable by URI path patterns and/or host headers.",
+    "JA3/TLS fingerprint context may be available via AWS WAF labels/request context depending on integration and traffic path.",
+    "Teams can tolerate an observation period before enforcement."
+  ],
+  "prerequisites": [
+    "AWS WAF v2 WebACL already exists and is attached to CloudFront or ALB.",
+    "Security operations workflow in place for reviewing WAF COUNT events.",
+    "Known-good client population (web, mobile, SDK) has been sampled to build an initial trusted fingerprint list."
+  ],
+  "rules": [
+    {
+      "id": "ja3-allowlist-monitor-sensitive-endpoints",
+      "description": "On sensitive endpoints, count requests where JA3/TLS fingerprint context is present and not in trusted allowlist.",
+      "priority": 210,
+      "action": "COUNT",
+      "statement_logic": "IF request matches sensitive endpoint scope AND JA3/TLS fingerprint signal exists AND fingerprint NOT IN trusted allowlist THEN COUNT",
+      "example_statement_pseudocode": {
+        "and": [
+          "sensitive_endpoint_match",
+          "ja3_context_present",
+          {
+            "not": "trusted_ja3_allowlist_match"
+          }
+        ]
+      },
+      "labels_added": [
+        "custom:tlsfp:non_allowlisted_sensitive"
+      ],
+      "monitoring_fields": [
+        "httpRequest.clientIp",
+        "httpRequest.uri",
+        "terminatingRuleId",
+        "labels",
+        "ja3/tls fingerprint context (if emitted)",
+        "userAgent",
+        "country"
+      ]
+    },
+    {
+      "id": "ja3-context-absent-monitor-sensitive-endpoints",
+      "description": "Separately count requests to sensitive endpoints when JA3/TLS fingerprint context is absent, to avoid blind blocking and support fallback tuning.",
+      "priority": 211,
+      "action": "COUNT",
+      "statement_logic": "IF request matches sensitive endpoint scope AND JA3/TLS fingerprint signal is absent THEN COUNT",
+      "example_statement_pseudocode": {
+        "and": [
+          "sensitive_endpoint_match",
+          {
+            "not": "ja3_context_present"
+          }
+        ]
+      },
+      "labels_added": [
+        "custom:tlsfp:context_absent_sensitive"
+      ],
+      "monitoring_fields": [
+        "httpRequest.clientIp",
+        "httpRequest.uri",
+        "terminatingRuleId",
+        "labels",
+        "userAgent",
+        "x-forwarded-for",
+        "country"
+      ]
+    }
+  ],
+  "tuning_notes": [
+    "Start with a narrow endpoint scope (for example: /login, /account/recovery, /checkout) before expanding.",
+    "Mobile and app client churn can be high across OS/app/library updates; expect JA3 drift and refresh trusted fingerprints regularly.",
+    "Do not treat JA3 as a standalone identity control. Combine with rate limits, auth telemetry, IP reputation, and device/app attestation where available.",
+    "Create separate allowlist buckets per channel (browser, iOS, Android, backend integrations) to reduce operational noise.",
+    "Use COUNT metrics to identify top non-allowlisted fingerprints by endpoint and successful-auth ratio before considering any BLOCK action.",
+    "Maintain an emergency override path (label bypass/IP set/scope-down exception) for critical client regressions."
+  ],
+  "fallback_behavior": {
+    "when_fingerprint_context_absent": "Do not block solely due to missing JA3/TLS context. Keep in COUNT and route through existing baseline protections (managed bot control, rate-based rules, IP reputation, auth anomaly detection).",
+    "recommended_control_path": [
+      "Managed rule groups and bot controls",
+      "Endpoint-specific rate limits",
+      "Credential abuse detection on auth outcomes",
+      "Geo/ASN risk scoring"
+    ]
+  },
+  "deployment_notes": [
+    "Phase 1 (COUNT): Deploy both rules in COUNT mode with sampled logs and dashboards for at least 7-14 days.",
+    "Phase 2 (Observe): Validate top fingerprints by endpoint, map to known client populations, and update allowlists for legitimate churn.",
+    "Phase 3 (Selective BLOCK): Convert only the non-allowlisted-sensitive rule to BLOCK for narrowly scoped endpoints with stable client fingerprints; keep context-absent rule in COUNT.",
+    "Phase 4 (Iterate): Reassess after app releases, SDK upgrades, and TLS stack changes; maintain a recurring allowlist review cadence."
+  ],
+  "monitoring": {
+    "kpis": [
+      "Count of custom:tlsfp:non_allowlisted_sensitive by endpoint",
+      "Count of custom:tlsfp:context_absent_sensitive by endpoint",
+      "Auth success/failure ratio for counted requests",
+      "Top JA3/TLS fingerprints by request volume",
+      "False-positive candidate rate from support/security tickets"
+    ],
+    "alerts": [
+      "Sudden spike in non-allowlisted counts on login endpoints",
+      "Persistent growth of context-absent counts suggesting telemetry/path regression",
+      "Post-enforcement increase in failed legitimate authentication attempts"
+    ]
+  },
+  "terraform_snippet": {
+    "description": "Example wiring into an existing aws_wafv2_web_acl using COUNT-first rule and a ByteMatchSet/IPSet placeholder for trusted fingerprints or label-driven matching.",
+    "hcl": "# Add to existing aws_wafv2_web_acl rule list (COUNT first)\nrule {\n  name     = \"ja3-allowlist-monitor-sensitive\"\n  priority = 210\n\n  action {\n    count {}\n  }\n\n  statement {\n    and_statement {\n      # 1) Sensitive endpoint scope\n      statement {\n        byte_match_statement {\n          field_to_match { uri_path {} }\n          positional_constraint = \"STARTS_WITH\"\n          search_string         = \"/login\"\n          text_transformation {\n            priority = 0\n            type     = \"NONE\"\n          }\n        }\n      }\n\n      # 2) JA3 context/label present (implementation depends on your log-label pipeline)\n      statement {\n        label_match_statement {\n          scope = \"LABEL\"\n          key   = \"awswaf:request:tls:ja3:present\"\n        }\n      }\n\n      # 3) Not in trusted JA3 allowlist\n      statement {\n        not_statement {\n          statement {\n            regex_pattern_set_reference_statement {\n              arn = aws_wafv2_regex_pattern_set.trusted_ja3.arn\n              field_to_match {\n                single_header { name = \"x-ja3-fingerprint\" }\n              }\n              text_transformation {\n                priority = 0\n                type     = \"LOWERCASE\"\n              }\n            }\n          }\n        }\n      }\n    }\n  }\n\n  visibility_config {\n    cloudwatch_metrics_enabled = true\n    metric_name                = \"ja3AllowlistMonitorSensitive\"\n    sampled_requests_enabled   = true\n  }\n}\n\n# Optional second rule: context absent on sensitive paths (COUNT only)\nrule {\n  name     = \"ja3-context-absent-monitor-sensitive\"\n  priority = 211\n\n  action {\n    count {}\n  }\n\n  statement {\n    and_statement {\n      statement {\n        byte_match_statement {\n          field_to_match { uri_path {} }\n          positional_constraint = \"STARTS_WITH\"\n          search_string         = \"/login\"\n          text_transformation {\n            priority = 0\n            type     = \"NONE\"\n          }\n        }\n      }\n      statement {\n        not_statement {\n          statement {\n            label_match_statement {\n              scope = \"LABEL\"\n              key   = \"awswaf:request:tls:ja3:present\"\n            }\n          }\n        }\n      }\n    }\n  }\n\n  visibility_config {\n    cloudwatch_metrics_enabled = true\n    metric_name                = \"ja3ContextAbsentSensitive\"\n    sampled_requests_enabled   = true\n  }\n}\n\n# Example trusted set placeholder\nresource \"aws_wafv2_regex_pattern_set\" \"trusted_ja3\" {\n  name  = \"trusted-ja3-fingerprints\"\n  scope = \"REGIONAL\" # or CLOUDFRONT\n\n  regular_expression {\n    regex_string = \"^(771,4865-4866-4867,0-23-65281,29-23-24,0)$\"\n  }\n}\n"
+  },
+  "limitations": [
+    "JA3/TLS fingerprint availability and exact matching mechanism can vary by AWS service path and integration details.",
+    "Fingerprints can be spoofed and should not be used as a sole trust decision.",
+    "Aggressive blocking without staged observation may impact legitimate mobile/app users due to TLS stack churn."
+  ],
+  "references": [
+    "https://docs.aws.amazon.com/waf/latest/developerguide/waf-chapter.html",
+    "https://docs.aws.amazon.com/waf/latest/developerguide/logging.html",
+    "https://docs.aws.amazon.com/waf/latest/developerguide/waf-rule-statement-type-label-match.html"
+  ]
+}
