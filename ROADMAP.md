@@ -46,4 +46,4 @@ This document outlines the planned evolution of waf-defense-rulepacks. Items are
 - [x] FortiWeb: P
 
 ## Automated Completions
-- [x] Add Cloudflare JWT Missing/Invalid Token Enforcement Pack for Protected API Paths (cycle 49)
+- [x] Add AWS WAF Query String Length Restriction Pack for Abuse/DoS Reduction (cycle 50)
