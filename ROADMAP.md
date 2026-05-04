@@ -46,4 +46,4 @@ This document outlines the planned evolution of waf-defense-rulepacks. Items are
 - [x] FortiWeb: P
 
 ## Automated Completions
-- [x] Add AWS WAF Query String Length Restriction Pack for Abuse/DoS Reduction (cycle 50)
+- [x] Add Cloudflare Cache Poisoning Header Normalization Pack (cycle 52)
