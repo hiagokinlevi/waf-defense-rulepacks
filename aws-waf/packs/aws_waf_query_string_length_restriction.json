@@ -1,0 +1,101 @@
+{
+  "name": "AWS WAF Query String Length Restriction (Abuse/DoS Reduction)",
+  "pack_id": "aws-waf-query-string-length-restriction",
+  "vendor": "aws-waf",
+  "service": "AWS WAFv2",
+  "version": "1.0.0",
+  "release_date": "2026-05-04",
+  "last_updated": "2026-05-04",
+  "author": "waf-defense-rulepacks",
+  "maturity": "stable",
+  "severity": "medium",
+  "category": "abuse-prevention",
+  "threats_mitigated": [
+    "parser abuse via oversized query strings",
+    "input amplification/probing against public endpoints",
+    "resource pressure from unusually large URI query components"
+  ],
+  "objective": "Detect and mitigate requests with abnormally large query strings to reduce abuse and DoS-style probing against public endpoints.",
+  "risk_mitigated": "Large query strings can stress application parsing, trigger edge-case behavior, and increase upstream resource consumption. Restricting query size narrows abuse surface with low implementation complexity.",
+  "default_action": "COUNT",
+  "supported_actions": [
+    "COUNT",
+    "BLOCK"
+  ],
+  "configuration": {
+    "query_string_size_threshold_bytes": 2048,
+    "size_constraint_operator": "GT",
+    "text_transformation_priority": 0,
+    "text_transformation_type": "NONE",
+    "scope_down_statement": {
+      "enabled": false,
+      "note": "Optionally exclude known-safe endpoints or constrain to internet-facing paths only."
+    }
+  },
+  "prerequisites": [
+    "AWS WAFv2 Web ACL attached to CloudFront, ALB, API Gateway, or AppSync",
+    "WAF logging enabled (recommended) to validate baseline query lengths before BLOCK mode"
+  ],
+  "deployment_notes": [
+    "Start in COUNT mode for at least 7 days to establish a baseline and identify legitimate large-query workflows.",
+    "Review top offending URIs, user agents, and source IP ranges before promoting to BLOCK.",
+    "If false positives are found, add targeted exclusions (for specific endpoints) rather than raising threshold globally.",
+    "Promote to BLOCK only after measured false-positive rate is acceptable for business traffic."
+  ],
+  "tuning_notes": [
+    "Use 2048 bytes as a conservative initial threshold for mixed workloads; tighten toward 1024 where feasible.",
+    "Public APIs with encoded filters/search parameters may need endpoint-specific exceptions.",
+    "Keep transformations as NONE for direct size measurement consistency.",
+    "Pair with request body size controls and rate limits for stronger abuse resistance."
+  ],
+  "monitoring": {
+    "key_metrics": [
+      "Counted/blocked requests by rule",
+      "Top URI paths triggering threshold",
+      "4xx/5xx changes after enforcement",
+      "Source IP and ASN concentration of triggered traffic"
+    ],
+    "alerts": [
+      "Sudden spike in counted oversized-query requests (>3x baseline)",
+      "Unexpected increase in blocked requests on critical application paths"
+    ],
+    "log_fields_to_review": [
+      "httpRequest.uri",
+      "httpRequest.args",
+      "action",
+      "terminatingRuleId",
+      "httpRequest.clientIp",
+      "httpRequest.country"
+    ]
+  },
+  "testing": {
+    "positive_tests": [
+      "Send request with query string > threshold and verify COUNT/BLOCK behavior based on configured action.",
+      "Confirm normal requests below threshold are unaffected."
+    ],
+    "negative_tests": [
+      "Validate critical application endpoints with typical and peak legitimate query lengths.",
+      "Confirm allowlisted/excluded endpoints (if configured) do not trigger this rule."
+    ]
+  },
+  "rollback": {
+    "strategy": "Switch rule action from BLOCK to COUNT, then disable if needed.",
+    "notes": [
+      "Retain logging during rollback to continue root-cause and threshold analysis.",
+      "Prefer temporary endpoint exclusions over full rule removal when possible."
+    ]
+  },
+  "references": [
+    "https://docs.aws.amazon.com/waf/latest/developerguide/waf-rule-statement-type-size-constraint-match.html",
+    "https://docs.aws.amazon.com/waf/latest/developerguide/waf-rule-statement-fields-list.html"
+  ],
+  "tags": [
+    "aws",
+    "waf",
+    "query-string",
+    "size-constraint",
+    "dos",
+    "abuse-prevention"
+  ],
+  "notes": "Terraform example (safe rollout):\\n\\n```hcl\\n# Phase 1: COUNT mode\\nrule {\\n  name     = \"query-string-too-large\"\\n  priority = 40\\n\\n  action {\\n    count {}\\n  }\\n\\n  statement {\\n    size_constraint_statement {\\n      comparison_operator = \"GT\"\\n      size                = 2048 # tune between 1024-2048 based on baseline\\n\\n      field_to_match {\\n        query_string {}\\n      }\\n\\n      text_transformation {\\n        priority = 0\\n        type     = \"NONE\"\\n      }\\n    }\\n  }\\n\\n  visibility_config {\\n    cloudwatch_metrics_enabled = true\\n    metric_name                = \"queryStringTooLarge\"\\n    sampled_requests_enabled   = true\\n  }\\n}\\n\\n# Phase 2: after validation, switch to BLOCK\\n# action {\\n#   block {}\\n# }\\n```"
+}
