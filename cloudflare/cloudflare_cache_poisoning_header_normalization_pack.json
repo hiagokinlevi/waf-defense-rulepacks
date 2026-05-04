@@ -1,0 +1,107 @@
+{
+  "name": "Cloudflare Cache Poisoning Header Normalization Pack",
+  "slug": "cloudflare-cache-poisoning-header-normalization",
+  "vendor": "cloudflare",
+  "version": "1.0.0",
+  "status": "active",
+  "objective": "Reduce cache poisoning and cache deception risk by normalizing and validating cache-influencing request headers and blocking ambiguous origin-routing/header-override patterns.",
+  "risk_mitigated": [
+    "Host header poisoning against cache keys and upstream routing",
+    "Cache key confusion via X-Forwarded-Host/X-Host/X-Original-Host override headers",
+    "Cache deception and path confusion via X-Original-URL/X-Rewrite-URL",
+    "Split-view cache behavior caused by duplicate, malformed, or conflicting host/path signals"
+  ],
+  "severity": "high",
+  "maturity": "production",
+  "tags": [
+    "cloudflare",
+    "cache-poisoning",
+    "cache-deception",
+    "header-normalization",
+    "host-header",
+    "transform-rules",
+    "waf-custom-rules"
+  ],
+  "assumptions": [
+    "Cloudflare is the internet-facing edge and primary cache layer for protected zones.",
+    "Applications either do not require client-supplied host override headers or can scope them to trusted upstream networks only.",
+    "Origin hostnames and expected public hostnames are documented before enforcement."
+  ],
+  "deployment_notes": {
+    "strategy": "phased",
+    "rollout": [
+      "Phase 1 (Observe): Deploy rules in Log action only. Collect 7-14 days of traffic including peak and release windows.",
+      "Phase 2 (Friction): Move high-confidence anomalies to Managed Challenge/JS Challenge where user impact is acceptable.",
+      "Phase 3 (Enforce): Promote confirmed malicious/conflicting patterns to Block; keep environment-specific exceptions explicit and minimal.",
+      "Phase 4 (Steady State): Review exceptions monthly and remove stale allowances."
+    ],
+    "rollback": "If false positives spike, revert Block/Challenge rules to Log and retain matching expressions while adjusting scoped allow conditions (path, host, source ASN/IP, service token identity)."
+  },
+  "tuning_notes": [
+    "If a trusted reverse proxy/load balancer in front of Cloudflare intentionally sets X-Forwarded-Host, allowlist only that source network or authenticated connector and normalize to a single canonical signal.",
+    "For multi-tenant SaaS, maintain an explicit allowlist/regex for valid hostnames and reject hostnames outside tenant provisioning data.",
+    "Exclude internal health-check paths and authenticated synthetic monitors if they use non-standard headers for diagnostics.",
+    "When legacy applications rely on X-Original-URL/X-Rewrite-URL, constrain accepted values to expected path prefixes and block absolute URL forms.",
+    "Avoid broad header-based bypasses; prefer narrow exceptions bound to specific hostname + path + trusted source."
+  ],
+  "monitoring": {
+    "signals": [
+      "Count/rate of requests with conflicting Host vs X-Forwarded-Host values",
+      "Requests containing override headers (X-Original-URL, X-Rewrite-URL, X-Host, X-Forwarded-Host) by hostname and path",
+      "Block/challenge/log ratio per rule over time",
+      "Cache HIT/MISS/BYPASS shifts after enforcement changes",
+      "Origin 4xx/5xx deltas correlated with blocked header anomalies",
+      "Top client IP/ASN/User-Agent for matched events to separate scanners from legitimate integrations"
+    ],
+    "false_positive_indicators": [
+      "Sudden increase in matches from known corporate NATs, API partners, or uptime monitors",
+      "Elevated challenge solves on business-critical endpoints after rule promotion",
+      "Support tickets reporting intermittent redirects or wrong-content cache responses",
+      "Host/path-specific spikes immediately after deployment or app routing changes"
+    ],
+    "review_cadence": "daily during first two weeks, then weekly"
+  },
+  "rules": [
+    {
+      "id": "cf-cphn-001",
+      "name": "Conflicting host authority indicators",
+      "type": "waf_custom_rule",
+      "priority": 100,
+      "default_action": "log",
+      "expression": "(len(http.request.headers[\"x-forwarded-host\"]) > 0 and lower(http.request.headers[\"x-forwarded-host\"][0]) ne lower(http.host)) or (len(http.request.headers[\"x-host\"]) > 0 and lower(http.request.headers[\"x-host\"][0]) ne lower(http.host))",
+      "description": "Detects requests where host-override style headers conflict with the actual HTTP host used for routing/cache key decisions.",
+      "recommended_promotion": "challenge_then_block"
+    },
+    {
+      "id": "cf-cphn-002",
+      "name": "Suspicious original/rewrite URL override headers",
+      "type": "waf_custom_rule",
+      "priority": 110,
+      "default_action": "log",
+      "expression": "(len(http.request.headers[\"x-original-url\"]) > 0 and (starts_with(lower(http.request.headers[\"x-original-url\"][0]), \"http://\") or starts_with(lower(http.request.headers[\"x-original-url\"][0]), \"https://\") or contains(http.request.headers[\"x-original-url\"][0], \"..\"))) or (len(http.request.headers[\"x-rewrite-url\"]) > 0 and (starts_with(lower(http.request.headers[\"x-rewrite-url\"][0]), \"http://\") or starts_with(lower(http.request.headers[\"x-rewrite-url\"][0]), \"https://\") or contains(http.request.headers[\"x-rewrite-url\"][0], \"..\")))",
+      "description": "Flags URL override headers carrying absolute URLs or traversal-like sequences often used in cache deception/poisoning attempts.",
+      "recommended_promotion": "challenge_then_block"
+    },
+    {
+      "id": "cf-cphn-003",
+      "name": "Multiple host override headers present",
+      "type": "waf_custom_rule",
+      "priority": 120,
+      "default_action": "log",
+      "expression": "(len(http.request.headers[\"x-forwarded-host\"]) > 0 and len(http.request.headers[\"x-original-host\"]) > 0) or (len(http.request.headers[\"x-forwarded-host\"]) > 0 and len(http.request.headers[\"x-host\"]) > 0) or (len(http.request.headers[\"x-original-host\"]) > 0 and len(http.request.headers[\"x-host\"]) > 0)",
+      "description": "Detects stacked host-override signaling that increases ambiguity and cache key confusion risk.",
+      "recommended_promotion": "log_or_challenge"
+    }
+  ],
+  "normalization_recommendations": [
+    "Use Cloudflare Transform Rules to remove untrusted host/path override headers at edge when not required by application design.",
+    "Canonicalize host handling to a single trusted header/source; do not permit client-controlled alternates to affect origin selection.",
+    "Ensure cache key policy does not include attacker-controlled override headers unless strictly validated and normalized.",
+    "Enforce hostname allowlists for public zones and redirect/block unknown hostnames before cache lookup where possible."
+  ],
+  "references": [
+    "https://developers.cloudflare.com/waf/custom-rules/",
+    "https://developers.cloudflare.com/rules/transform/",
+    "https://owasp.org/www-project-web-security-testing-guide/"
+  ]
+}
