@@ -1,0 +1,35 @@
+{
+  "vendor": "aws-waf",
+  "packs": [
+    {
+      "pack_id": "aws-waf-managed-rule-groups-webacl",
+      "path": "aws-waf/packs/aws_waf_managed_rule_groups_webacl.json",
+      "name": "AWS WAF Managed Rule Groups WebACL",
+      "category": "baseline"
+    },
+    {
+      "pack_id": "aws-waf-custom-login-rate-limit",
+      "path": "aws-waf/packs/aws_waf_custom_login_rate_limit.json",
+      "name": "AWS WAF Custom Login Rate Limit",
+      "category": "rate-limiting"
+    },
+    {
+      "pack_id": "aws-waf-ip-reputation-rule",
+      "path": "aws-waf/packs/aws_waf_ip_reputation_rule.json",
+      "name": "AWS WAF IP Reputation Rule",
+      "category": "threat-intel"
+    },
+    {
+      "pack_id": "aws-waf-log4shell-virtual-patch",
+      "path": "aws-waf/packs/aws_waf_log4shell_virtual_patch.json",
+      "name": "AWS WAF Log4Shell Virtual Patch",
+      "category": "virtual-patching"
+    },
+    {
+      "pack_id": "aws-waf-query-string-length-restriction",
+      "path": "aws-waf/packs/aws_waf_query_string_length_restriction.json",
+      "name": "AWS WAF Query String Length Restriction (Abuse/DoS Reduction)",
+      "category": "abuse-prevention"
+    }
+  ]
+}
