@@ -1,0 +1,66 @@
+{
+  "name": "Cloudflare HTTP Method Allowlist Enforcement for Sensitive Routes",
+  "slug": "cloudflare-http-method-allowlist-sensitive-routes",
+  "vendor": "cloudflare",
+  "version": "1.0.0",
+  "objective": "Enforce explicit HTTP method allowlists on sensitive application routes so only expected verbs are accepted and unexpected methods are denied.",
+  "risk_mitigated": [
+    "Method tampering and verb confusion attacks against authentication/admin endpoints",
+    "Abuse of dangerous or unnecessary HTTP methods (PUT, DELETE, TRACE, CONNECT) on sensitive paths",
+    "Attack surface expansion from unneeded method exposure"
+  ],
+  "severity": "high",
+  "maturity": "stable",
+  "tags": [
+    "cloudflare",
+    "http-method",
+    "allowlist",
+    "admin",
+    "login",
+    "hardening"
+  ],
+  "description": "This pack defines Cloudflare WAF custom rules that restrict HTTP methods by route class. Login/authentication endpoints are limited to GET/POST, read-only admin pages are limited to GET, and explicitly dangerous verbs are blocked on scoped sensitive paths.",
+  "rules": [
+    {
+      "id": "cf-method-allowlist-login-auth",
+      "description": "Allow only GET/POST on login and authentication routes.",
+      "expression": "(http.request.uri.path matches \"(?i)^/(login|signin|auth|session)(/.*)?$\" and not http.request.method in {\"GET\" \"POST\"})",
+      "action": "block",
+      "enabled": true
+    },
+    {
+      "id": "cf-method-allowlist-admin-readonly",
+      "description": "Allow only GET on read-only admin/reporting routes.",
+      "expression": "(http.request.uri.path matches \"(?i)^/(admin/(dashboard|reports|audit|readonly))(?:/.*)?$\" and http.request.method ne \"GET\")",
+      "action": "block",
+      "enabled": true
+    },
+    {
+      "id": "cf-block-dangerous-verbs-sensitive",
+      "description": "Block dangerous methods on scoped sensitive routes.",
+      "expression": "(http.request.uri.path matches \"(?i)^/(login|signin|auth|session|admin)(/.*)?$\" and http.request.method in {\"PUT\" \"DELETE\" \"TRACE\" \"CONNECT\"})",
+      "action": "block",
+      "enabled": true
+    }
+  ],
+  "deployment_notes": [
+    "Deploy in log/simulate mode first (or set action to log) for at least 7 days to baseline legitimate traffic patterns.",
+    "Review matched requests by route and method before switching actions to block.",
+    "Roll out in phases: start with admin read-only routes, then login/auth endpoints, then broader sensitive path coverage."
+  ],
+  "tuning_guidance": [
+    "If APIs share sensitive prefixes, carve out explicit exceptions for documented methods per endpoint.",
+    "Permit CORS preflight (OPTIONS) where required by browser clients, but scope narrowly to known API paths and origins.",
+    "For webhook or integration endpoints under sensitive prefixes, define separate allowlist rules rather than globally relaxing methods.",
+    "Keep regex path scopes aligned with application routing changes to avoid accidental over-blocking."
+  ],
+  "monitoring_notes": [
+    "Track WAF events for blocked methods by URI path, source IP/ASN, and user agent to identify false positives quickly.",
+    "Alert on spikes in blocked TRACE/CONNECT/DELETE/PUT attempts on login/admin paths as potential reconnaissance or exploitation activity.",
+    "During initial enforcement, perform daily false-positive review with application owners and update route/method exceptions as needed."
+  ],
+  "references": [
+    "https://developers.cloudflare.com/waf/custom-rules/",
+    "https://owasp.org/www-community/attacks/HTTP_Verb_Tampering"
+  ]
+}
