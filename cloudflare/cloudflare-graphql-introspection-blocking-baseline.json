@@ -1,0 +1,87 @@
+{
+  "name": "Cloudflare GraphQL Introspection Blocking Baseline",
+  "slug": "cloudflare-graphql-introspection-blocking-baseline",
+  "vendor": "cloudflare",
+  "product": "waf-custom-rules",
+  "version": "1.0.0",
+  "release": "stable",
+  "managed_by": "customer",
+  "summary": "Detects and blocks GraphQL introspection query patterns (for example __schema and __type) on GraphQL endpoints.",
+  "description": "This production-first baseline pack helps reduce GraphQL schema reconnaissance by detecting requests that include introspection fields such as __schema or __type when sent to GraphQL endpoints. Recommended rollout is log mode first to establish known-good behavior, then promote to block once validated.",
+  "risk_mitigated": [
+    "GraphQL schema discovery",
+    "API reconnaissance",
+    "Pre-attack endpoint mapping"
+  ],
+  "severity": "high",
+  "maturity": "beta",
+  "tags": [
+    "cloudflare",
+    "waf",
+    "graphql",
+    "api-security",
+    "introspection",
+    "reconnaissance",
+    "production-first"
+  ],
+  "references": [
+    {
+      "title": "GraphQL Introspection",
+      "url": "https://graphql.org/learn/introspection/"
+    },
+    {
+      "title": "Cloudflare WAF custom rules",
+      "url": "https://developers.cloudflare.com/waf/custom-rules/"
+    }
+  ],
+  "deployment_guidance": {
+    "strategy": "progressive",
+    "phases": [
+      "Deploy in log mode first (no block) for at least 7 days.",
+      "Review security events for legitimate developer tooling and approved internal scanners.",
+      "Add scoped exceptions for trusted sources if introspection is required in controlled environments.",
+      "Promote action to block in production once false positives are addressed.",
+      "Continuously monitor for bypass attempts and adjust endpoint/path matching as APIs evolve."
+    ]
+  },
+  "tuning_notes": [
+    "Scope to known GraphQL paths (for example /graphql, /api/graphql) to reduce noise.",
+    "Consider allowing introspection only from trusted IP ranges, service tokens, or non-production environments.",
+    "Watch for encoded payload variants and multiline request bodies in POST operations.",
+    "If persisted queries are used, ensure rule logic still inspects request bodies where applicable.",
+    "Coordinate with API owners before blocking to avoid disrupting legitimate schema tooling."
+  ],
+  "monitoring": {
+    "kpis": [
+      "Count of matched introspection requests by endpoint",
+      "Top source IPs / ASNs triggering matches",
+      "False-positive rate during log-only phase",
+      "Block volume and downstream API error rates after enforcement"
+    ],
+    "alerting": [
+      "Spike in introspection matches over baseline",
+      "Repeated matches from single source over short window",
+      "Unexpected matches on non-GraphQL paths"
+    ]
+  },
+  "rules": [
+    {
+      "id": "cf-graphql-introspection-001",
+      "name": "GraphQL introspection keyword on GraphQL endpoint",
+      "description": "Matches requests to GraphQL endpoints where the request body contains __schema or __type.",
+      "priority": 100,
+      "action": "log",
+      "expression": "(http.request.uri.path contains \"/graphql\") and ((lower(http.request.body.raw) contains \"__schema\") or (lower(http.request.body.raw) contains \"__type\"))",
+      "notes": "Start with log action, validate legitimate traffic, then change to block for production enforcement."
+    }
+  ],
+  "change_log": [
+    {
+      "version": "1.0.0",
+      "date": "2026-05-05",
+      "changes": [
+        "Initial baseline pack for GraphQL introspection detection and staged blocking rollout."
+      ]
+    }
+  ]
+}
