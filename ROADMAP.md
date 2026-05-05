@@ -46,4 +46,4 @@ This document outlines the planned evolution of waf-defense-rulepacks. Items are
 - [x] FortiWeb: P
 
 ## Automated Completions
-- [x] Add Cloudflare GraphQL Introspection Blocking Baseline Pack (cycle 53)
+- [x] Add Cloudflare HTTP Method Allowlist Enforcement Pack for Sensitive Routes (cycle 54)
