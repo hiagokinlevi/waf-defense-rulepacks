@@ -1,0 +1,467 @@
+{
+  "name": "AWS WAF Oversized Body Handling Pack (Count + Block)",
+  "vendor": "aws-waf",
+  "service": "wafv2",
+  "type": "custom-rule-pack",
+  "objective": "Enforce explicit oversized request body handling on high-risk API paths so requests exceeding inspectable body limits are intentionally counted during rollout and then blocked during enforcement.",
+  "risk_mitigated": [
+    "Bypass of body-inspection-based detections via oversized payloads",
+    "Reduced visibility for malicious content hidden beyond WAF body inspection limits",
+    "Inconsistent handling of oversized request bodies across sensitive API endpoints"
+  ],
+  "severity": "high",
+  "maturity": "stable",
+  "tags": [
+    "aws",
+    "waf",
+    "api",
+    "request-body",
+    "oversize-handling",
+    "defense-evasion"
+  ],
+  "assumptions": [
+    "High-risk API endpoints can be identified and expressed as URI path matches.",
+    "Request body inspection is enabled where applicable.",
+    "Teams can review CloudWatch metrics and WAF logs during rollout."
+  ],
+  "tuning_notes": [
+    "Set `oversize_body_limit_bytes` to your effective protected body size boundary (for example 8192 for ALB/AppSync defaults, or a higher configured CloudFront/API Gateway inspection limit where applicable).",
+    "Populate `excluded_large_upload_paths` with known legitimate large-upload endpoints (for example `/api/v1/files/upload`, `/media/import`, `/bulk`).",
+    "Start with narrow `protected_high_risk_paths` for auth, admin, payment, token, and profile mutation APIs before expanding coverage.",
+    "If false positives occur, first tighten path scope or add explicit exclusions before lowering enforcement."
+  ],
+  "deployment_notes": [
+    "Deploy `count_mode_rule` first (safe rollout).",
+    "Run in count mode for at least one full business cycle and review sampled requests in WAF logs.",
+    "Validate that known large-upload/business workflows are excluded or otherwise handled.",
+    "Promote to `block_mode_rule` once false positives are understood and accepted.",
+    "Keep a rollback option by retaining the count variant definition for fast revert."
+  ],
+  "monitoring_guidance": [
+    "Track CloudWatch metric for `OversizedBodyHighRiskPaths-Count` and alert on sustained spikes.",
+    "After enforcement, track `OversizedBodyHighRiskPaths-Block` blocked-request counts and top URI paths.",
+    "Use AWS WAF logs to inspect `terminatingRuleId`, `action`, `httpRequest.uri`, and request size indicators for triage.",
+    "Correlate blocked events with upstream application/API logs to confirm malicious vs legitimate traffic."
+  ],
+  "configuration": {
+    "oversize_body_limit_bytes": 8192,
+    "protected_high_risk_paths": [
+      "/api/auth",
+      "/api/login",
+      "/api/token",
+      "/api/admin",
+      "/api/account",
+      "/api/payment",
+      "/api/profile"
+    ],
+    "excluded_large_upload_paths": [
+      "/api/v1/files/upload",
+      "/api/v1/media/upload",
+      "/api/v1/import"
+    ]
+  },
+  "rules": {
+    "count_mode_rule": {
+      "name": "OversizedBodyHighRiskPaths-Count",
+      "priority": 50,
+      "action": {
+        "count": {}
+      },
+      "statement": {
+        "andStatement": {
+          "statements": [
+            {
+              "orStatement": {
+                "statements": [
+                  {
+                    "byteMatchStatement": {
+                      "searchString": "/api/auth",
+                      "fieldToMatch": {
+                        "uriPath": {}
+                      },
+                      "textTransformations": [
+                        {
+                          "priority": 0,
+                          "type": "NONE"
+                        }
+                      ],
+                      "positionalConstraint": "STARTS_WITH"
+                    }
+                  },
+                  {
+                    "byteMatchStatement": {
+                      "searchString": "/api/login",
+                      "fieldToMatch": {
+                        "uriPath": {}
+                      },
+                      "textTransformations": [
+                        {
+                          "priority": 0,
+                          "type": "NONE"
+                        }
+                      ],
+                      "positionalConstraint": "STARTS_WITH"
+                    }
+                  },
+                  {
+                    "byteMatchStatement": {
+                      "searchString": "/api/token",
+                      "fieldToMatch": {
+                        "uriPath": {}
+                      },
+                      "textTransformations": [
+                        {
+                          "priority": 0,
+                          "type": "NONE"
+                        }
+                      ],
+                      "positionalConstraint": "STARTS_WITH"
+                    }
+                  },
+                  {
+                    "byteMatchStatement": {
+                      "searchString": "/api/admin",
+                      "fieldToMatch": {
+                        "uriPath": {}
+                      },
+                      "textTransformations": [
+                        {
+                          "priority": 0,
+                          "type": "NONE"
+                        }
+                      ],
+                      "positionalConstraint": "STARTS_WITH"
+                    }
+                  },
+                  {
+                    "byteMatchStatement": {
+                      "searchString": "/api/account",
+                      "fieldToMatch": {
+                        "uriPath": {}
+                      },
+                      "textTransformations": [
+                        {
+                          "priority": 0,
+                          "type": "NONE"
+                        }
+                      ],
+                      "positionalConstraint": "STARTS_WITH"
+                    }
+                  },
+                  {
+                    "byteMatchStatement": {
+                      "searchString": "/api/payment",
+                      "fieldToMatch": {
+                        "uriPath": {}
+                      },
+                      "textTransformations": [
+                        {
+                          "priority": 0,
+                          "type": "NONE"
+                        }
+                      ],
+                      "positionalConstraint": "STARTS_WITH"
+                    }
+                  },
+                  {
+                    "byteMatchStatement": {
+                      "searchString": "/api/profile",
+                      "fieldToMatch": {
+                        "uriPath": {}
+                      },
+                      "textTransformations": [
+                        {
+                          "priority": 0,
+                          "type": "NONE"
+                        }
+                      ],
+                      "positionalConstraint": "STARTS_WITH"
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "notStatement": {
+                "statement": {
+                  "orStatement": {
+                    "statements": [
+                      {
+                        "byteMatchStatement": {
+                          "searchString": "/api/v1/files/upload",
+                          "fieldToMatch": {
+                            "uriPath": {}
+                          },
+                          "textTransformations": [
+                            {
+                              "priority": 0,
+                              "type": "NONE"
+                            }
+                          ],
+                          "positionalConstraint": "STARTS_WITH"
+                        }
+                      },
+                      {
+                        "byteMatchStatement": {
+                          "searchString": "/api/v1/media/upload",
+                          "fieldToMatch": {
+                            "uriPath": {}
+                          },
+                          "textTransformations": [
+                            {
+                              "priority": 0,
+                              "type": "NONE"
+                            }
+                          ],
+                          "positionalConstraint": "STARTS_WITH"
+                        }
+                      },
+                      {
+                        "byteMatchStatement": {
+                          "searchString": "/api/v1/import",
+                          "fieldToMatch": {
+                            "uriPath": {}
+                          },
+                          "textTransformations": [
+                            {
+                              "priority": 0,
+                              "type": "NONE"
+                            }
+                          ],
+                          "positionalConstraint": "STARTS_WITH"
+                        }
+                      }
+                    ]
+                  }
+                }
+              }
+            },
+            {
+              "sizeConstraintStatement": {
+                "comparisonOperator": "GT",
+                "size": 8192,
+                "fieldToMatch": {
+                  "body": {
+                    "oversizeHandling": "MATCH"
+                  }
+                },
+                "textTransformations": [
+                  {
+                    "priority": 0,
+                    "type": "NONE"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "visibilityConfig": {
+        "sampledRequestsEnabled": true,
+        "cloudWatchMetricsEnabled": true,
+        "metricName": "OversizedBodyHighRiskPathsCount"
+      }
+    },
+    "block_mode_rule": {
+      "name": "OversizedBodyHighRiskPaths-Block",
+      "priority": 50,
+      "action": {
+        "block": {}
+      },
+      "statement": {
+        "andStatement": {
+          "statements": [
+            {
+              "orStatement": {
+                "statements": [
+                  {
+                    "byteMatchStatement": {
+                      "searchString": "/api/auth",
+                      "fieldToMatch": {
+                        "uriPath": {}
+                      },
+                      "textTransformations": [
+                        {
+                          "priority": 0,
+                          "type": "NONE"
+                        }
+                      ],
+                      "positionalConstraint": "STARTS_WITH"
+                    }
+                  },
+                  {
+                    "byteMatchStatement": {
+                      "searchString": "/api/login",
+                      "fieldToMatch": {
+                        "uriPath": {}
+                      },
+                      "textTransformations": [
+                        {
+                          "priority": 0,
+                          "type": "NONE"
+                        }
+                      ],
+                      "positionalConstraint": "STARTS_WITH"
+                    }
+                  },
+                  {
+                    "byteMatchStatement": {
+                      "searchString": "/api/token",
+                      "fieldToMatch": {
+                        "uriPath": {}
+                      },
+                      "textTransformations": [
+                        {
+                          "priority": 0,
+                          "type": "NONE"
+                        }
+                      ],
+                      "positionalConstraint": "STARTS_WITH"
+                    }
+                  },
+                  {
+                    "byteMatchStatement": {
+                      "searchString": "/api/admin",
+                      "fieldToMatch": {
+                        "uriPath": {}
+                      },
+                      "textTransformations": [
+                        {
+                          "priority": 0,
+                          "type": "NONE"
+                        }
+                      ],
+                      "positionalConstraint": "STARTS_WITH"
+                    }
+                  },
+                  {
+                    "byteMatchStatement": {
+                      "searchString": "/api/account",
+                      "fieldToMatch": {
+                        "uriPath": {}
+                      },
+                      "textTransformations": [
+                        {
+                          "priority": 0,
+                          "type": "NONE"
+                        }
+                      ],
+                      "positionalConstraint": "STARTS_WITH"
+                    }
+                  },
+                  {
+                    "byteMatchStatement": {
+                      "searchString": "/api/payment",
+                      "fieldToMatch": {
+                        "uriPath": {}
+                      },
+                      "textTransformations": [
+                        {
+                          "priority": 0,
+                          "type": "NONE"
+                        }
+                      ],
+                      "positionalConstraint": "STARTS_WITH"
+                    }
+                  },
+                  {
+                    "byteMatchStatement": {
+                      "searchString": "/api/profile",
+                      "fieldToMatch": {
+                        "uriPath": {}
+                      },
+                      "textTransformations": [
+                        {
+                          "priority": 0,
+                          "type": "NONE"
+                        }
+                      ],
+                      "positionalConstraint": "STARTS_WITH"
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "notStatement": {
+                "statement": {
+                  "orStatement": {
+                    "statements": [
+                      {
+                        "byteMatchStatement": {
+                          "searchString": "/api/v1/files/upload",
+                          "fieldToMatch": {
+                            "uriPath": {}
+                          },
+                          "textTransformations": [
+                            {
+                              "priority": 0,
+                              "type": "NONE"
+                            }
+                          ],
+                          "positionalConstraint": "STARTS_WITH"
+                        }
+                      },
+                      {
+                        "byteMatchStatement": {
+                          "searchString": "/api/v1/media/upload",
+                          "fieldToMatch": {
+                            "uriPath": {}
+                          },
+                          "textTransformations": [
+                            {
+                              "priority": 0,
+                              "type": "NONE"
+                            }
+                          ],
+                          "positionalConstraint": "STARTS_WITH"
+                        }
+                      },
+                      {
+                        "byteMatchStatement": {
+                          "searchString": "/api/v1/import",
+                          "fieldToMatch": {
+                            "uriPath": {}
+                          },
+                          "textTransformations": [
+                            {
+                              "priority": 0,
+                              "type": "NONE"
+                            }
+                          ],
+                          "positionalConstraint": "STARTS_WITH"
+                        }
+                      }
+                    ]
+                  }
+                }
+              }
+            },
+            {
+              "sizeConstraintStatement": {
+                "comparisonOperator": "GT",
+                "size": 8192,
+                "fieldToMatch": {
+                  "body": {
+                    "oversizeHandling": "MATCH"
+                  }
+                },
+                "textTransformations": [
+                  {
+                    "priority": 0,
+                    "type": "NONE"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "visibilityConfig": {
+        "sampledRequestsEnabled": true,
+        "cloudWatchMetricsEnabled": true,
+        "metricName": "OversizedBodyHighRiskPathsBlock"
+      }
+    }
+  }
+}
