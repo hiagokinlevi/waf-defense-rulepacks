@@ -46,4 +46,4 @@ This document outlines the planned evolution of waf-defense-rulepacks. Items are
 - [x] FortiWeb: P
 
 ## Automated Completions
-- [x] Add Cloudflare HTTP Method Allowlist Enforcement Pack for Sensitive Routes (cycle 54)
+- [x] Add AWS WAF Restricted Content-Type Enforcement Pack for API Endpoints (cycle 55)
