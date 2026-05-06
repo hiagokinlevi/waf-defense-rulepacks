@@ -1,0 +1,162 @@
+{
+  "name": "AWS WAF Restricted Content-Type Enforcement for API Endpoints",
+  "slug": "aws-waf-restricted-content-type-api",
+  "vendor": "aws-waf",
+  "description": "Enforces an allowlist of expected Content-Type headers (default: application/json) on state-changing API routes to reduce content-type confusion and parser mismatch attack surface.",
+  "objective": "Allow only expected Content-Type values for write operations on API endpoints, while permitting safe methods to bypass enforcement when desired.",
+  "risk_mitigated": [
+    "Content-Type confusion attacks against API parsers",
+    "Unexpected payload formats reaching deserialization and business logic",
+    "Evasion attempts that rely on alternate media types"
+  ],
+  "severity": "high",
+  "maturity": "production",
+  "tags": [
+    "api",
+    "content-type",
+    "input-validation",
+    "aws-waf",
+    "terraform"
+  ],
+  "deployment_notes": [
+    "Deploy in COUNT mode first for 7-14 days and review sampled requests and WAF logs for legitimate clients with missing or variant Content-Type headers.",
+    "After tuning allowlists and exclusions, switch to BLOCK mode for targeted API paths.",
+    "Roll out per service or path prefix (/api/v1, /api/v2) rather than globally when API behaviors differ."
+  ],
+  "tuning_notes": [
+    "Scope rule to state-changing methods (POST, PUT, PATCH, DELETE) and optionally exclude GET/HEAD from evaluation.",
+    "If file upload endpoints exist, add route-specific exceptions for multipart/form-data and validate boundary handling in upstream services.",
+    "If some endpoints legitimately use application/x-www-form-urlencoded or vendor media types (e.g., application/vnd.api+json), include exact allowed values.",
+    "Consider normalizing or matching only media type token (before semicolon) if clients send charset parameters."
+  ],
+  "monitoring": {
+    "metrics": [
+      "BlockedRequests",
+      "CountedRequests",
+      "AllowedRequests"
+    ],
+    "log_fields": [
+      "httpRequest.uri",
+      "httpRequest.httpMethod",
+      "httpRequest.headers",
+      "action",
+      "terminatingRuleId"
+    ],
+    "alerts": [
+      "Spike in blocked requests for a newly protected API route",
+      "Sustained count hits after initial tuning window"
+    ]
+  },
+  "terraform": {
+    "resource_type": "aws_wafv2_web_acl",
+    "rule": {
+      "name": "restricted-content-type-api-state-changing",
+      "priority": 60,
+      "action": {
+        "count": {}
+      },
+      "statement": {
+        "and_statement": {
+          "statements": [
+            {
+              "byte_match_statement": {
+                "field_to_match": {
+                  "uri_path": {}
+                },
+                "positional_constraint": "STARTS_WITH",
+                "search_string": "/api/",
+                "text_transformations": [
+                  {
+                    "priority": 0,
+                    "type": "NONE"
+                  }
+                ]
+              }
+            },
+            {
+              "not_statement": {
+                "statement": {
+                  "or_statement": {
+                    "statements": [
+                      {
+                        "byte_match_statement": {
+                          "field_to_match": {
+                            "method": {}
+                          },
+                          "positional_constraint": "EXACTLY",
+                          "search_string": "GET",
+                          "text_transformations": [
+                            {
+                              "priority": 0,
+                              "type": "NONE"
+                            }
+                          ]
+                        }
+                      },
+                      {
+                        "byte_match_statement": {
+                          "field_to_match": {
+                            "method": {}
+                          },
+                          "positional_constraint": "EXACTLY",
+                          "search_string": "HEAD",
+                          "text_transformations": [
+                            {
+                              "priority": 0,
+                              "type": "NONE"
+                            }
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                }
+              }
+            },
+            {
+              "not_statement": {
+                "statement": {
+                  "or_statement": {
+                    "statements": [
+                      {
+                        "byte_match_statement": {
+                          "field_to_match": {
+                            "single_header": {
+                              "name": "content-type"
+                            }
+                          },
+                          "positional_constraint": "STARTS_WITH",
+                          "search_string": "application/json",
+                          "text_transformations": [
+                            {
+                              "priority": 0,
+                              "type": "LOWERCASE"
+                            },
+                            {
+                              "priority": 1,
+                              "type": "COMPRESS_WHITE_SPACE"
+                            }
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "visibility_config": {
+        "cloudwatch_metrics_enabled": true,
+        "metric_name": "restrictedContentTypeApiStateChanging",
+        "sampled_requests_enabled": true
+      }
+    }
+  },
+  "implementation_notes": [
+    "Default action is COUNT for safe rollout; change to block after validation.",
+    "Add additional allowed content-types as extra statements in the inner or_statement.",
+    "For upload endpoints, add higher-priority allow rules scoped to path + method + multipart/form-data before this rule."
+  ]
+}
