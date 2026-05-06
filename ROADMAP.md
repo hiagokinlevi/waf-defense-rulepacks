@@ -46,4 +46,4 @@ This document outlines the planned evolution of waf-defense-rulepacks. Items are
 - [x] FortiWeb: P
 
 ## Automated Completions
-- [x] Add AWS WAF Restricted Content-Type Enforcement Pack for API Endpoints (cycle 55)
+- [x] Add AWS WAF Oversized Body Handling Pack (Block + Count variants) (cycle 56)
