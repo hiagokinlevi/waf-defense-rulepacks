@@ -1,0 +1,82 @@
+{
+  "name": "Cloudflare XXE Detection Baseline Pack",
+  "vendor": "cloudflare",
+  "service": "waf_custom_rules",
+  "version": "1.0.0",
+  "objective": "Detect and disrupt XML External Entity (XXE) attack attempts across XML request bodies and query parameters using high-signal baseline signatures.",
+  "risk_mitigated": "XXE exploitation leading to sensitive file disclosure, SSRF pivoting through XML parsers, and parser-level denial of service from malicious external entity declarations.",
+  "severity": "high",
+  "maturity": "baseline",
+  "labels": [
+    "xxe",
+    "xml",
+    "owasp-a05",
+    "input-validation",
+    "cloudflare"
+  ],
+  "production_defaults": {
+    "initial_action": "log",
+    "recommended_progression": [
+      "log",
+      "managed_challenge",
+      "block"
+    ],
+    "notes": "Start in log mode for at least 7 days, then move to managed challenge for non-browser/API traffic. Promote to block after validating parser and client behavior in production telemetry."
+  },
+  "rules": [
+    {
+      "id": "cf-xxe-001-doctype-entity-body",
+      "description": "Detect XML DTD/entity declarations in request body.",
+      "expression": "(http.request.body.raw contains \"<!DOCTYPE\") or (http.request.body.raw contains \"<!ENTITY\")",
+      "action": "log",
+      "enabled": true
+    },
+    {
+      "id": "cf-xxe-002-external-identifiers-body",
+      "description": "Detect SYSTEM/PUBLIC external identifier usage in XML body.",
+      "expression": "(http.request.body.raw contains \" SYSTEM \") or (http.request.body.raw contains \" PUBLIC \")",
+      "action": "log",
+      "enabled": true
+    },
+    {
+      "id": "cf-xxe-003-dangerous-uri-schemes-body",
+      "description": "Detect file:// and expect:// entity reference indicators in XML body.",
+      "expression": "(http.request.body.raw contains \"file://\") or (http.request.body.raw contains \"expect://\")",
+      "action": "managed_challenge",
+      "enabled": true
+    },
+    {
+      "id": "cf-xxe-004-query-indicators",
+      "description": "Detect XXE markers in query string parameters.",
+      "expression": "(lower(http.request.uri.query) contains \"<!doctype\") or (lower(http.request.uri.query) contains \"<!entity\") or (lower(http.request.uri.query) contains \"system\") or (lower(http.request.uri.query) contains \"public\") or (lower(http.request.uri.query) contains \"file://\") or (lower(http.request.uri.query) contains \"expect://\")",
+      "action": "log",
+      "enabled": true
+    }
+  ],
+  "tuning_notes": [
+    "Scope rules to XML endpoints first (for example, SOAP, XML-RPC, SAML ACS) to reduce noise.",
+    "Allowlist known-safe integrations that legitimately send DTD-like content.",
+    "If false positives occur on generic 'system' or 'public' tokens, keep those detections in log mode while enforcing stronger indicators (DOCTYPE/ENTITY and scheme-based references).",
+    "Pair with parser hardening (disable external entities, disable DTD processing where possible) for defense in depth."
+  ],
+  "deployment_notes": [
+    "Deploy in log mode first and validate events by path, ASN, JA3/JA4, user-agent, and source reputation.",
+    "Promote high-confidence signatures (DOCTYPE/ENTITY + file:// or expect://) to managed challenge before blocking.",
+    "Use phased rollout by route/hostname and maintain rollback capability.",
+    "Coordinate with application owners for XML parser behavior confirmation before block enforcement."
+  ],
+  "monitoring_guidance": [
+    "Track hit-rate per rule ID and endpoint to identify concentrated probing.",
+    "Alert on spikes in cf-xxe-001/cf-xxe-003 combinations from single sources or distributed low-and-slow campaigns.",
+    "Monitor challenge solve/fail ratios after moving from log to managed_challenge.",
+    "Review sampled payloads weekly to refine endpoint scoping and allowlists."
+  ],
+  "terraform_example": {
+    "description": "Concise example aligned to Cloudflare custom ruleset conventions; start with log/challenge actions.",
+    "snippet": "resource \"cloudflare_ruleset\" \"xxe_baseline\" {\n  zone_id = var.zone_id\n  name    = \"XXE Detection Baseline\"\n  kind    = \"zone\"\n  phase   = \"http_request_firewall_custom\"\n\n  rules {\n    description = \"Detect XML DTD/entity declarations\"\n    expression  = \"(http.request.body.raw contains \\\"<!DOCTYPE\\\") or (http.request.body.raw contains \\\"<!ENTITY\\\")\"\n    action      = \"log\"\n    enabled     = true\n  }\n\n  rules {\n    description = \"Detect file:// and expect:// XXE indicators\"\n    expression  = \"(http.request.body.raw contains \\\"file://\\\") or (http.request.body.raw contains \\\"expect://\\\")\"\n    action      = \"managed_challenge\"\n    enabled     = true\n  }\n}\n"
+  },
+  "references": [
+    "https://owasp.org/www-community/vulnerabilities/XML_External_Entity_(XXE)_Processing",
+    "https://cheatsheetseries.owasp.org/cheatsheets/XML_Security_Cheat_Sheet.html"
+  ]
+}
