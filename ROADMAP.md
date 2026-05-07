@@ -46,4 +46,4 @@ This document outlines the planned evolution of waf-defense-rulepacks. Items are
 - [x] FortiWeb: P
 
 ## Automated Completions
-- [x] Add AWS WAF Oversized Body Handling Pack (Block + Count variants) (cycle 56)
+- [x] Add Cloudflare XML External Entity (XXE) Detection Baseline Pack (cycle 58)
