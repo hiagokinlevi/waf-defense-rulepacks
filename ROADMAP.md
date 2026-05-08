@@ -46,4 +46,4 @@ This document outlines the planned evolution of waf-defense-rulepacks. Items are
 - [x] FortiWeb: P
 
 ## Automated Completions
-- [x] Add Cloudflare XML External Entity (XXE) Detection Baseline Pack (cycle 58)
+- [x] Add AWS WAF Geo-Restriction Rule Pack for Admin and Internal Paths (cycle 59)
