@@ -1,0 +1,183 @@
+{
+  "name": "AWS WAF Geo-Restriction for Admin and Internal Paths",
+  "slug": "aws-waf-geo-restriction-admin-internal-paths",
+  "vendor": "aws-waf",
+  "service": "wafv2",
+  "type": "custom-rule-pack",
+  "version": "1.0.0",
+  "maturity": "production",
+  "severity": "high",
+  "summary": "Restrict access to sensitive URI paths (e.g., /admin, /internal, /ops) to an allowlisted set of countries using AWS WAF geo match and path matching logic.",
+  "objective": "Reduce exposure of administrative and internal application surfaces to untrusted geographies while preserving controlled access for approved regions.",
+  "risk_mitigated": [
+    "Unauthorized probing and exploitation attempts against sensitive endpoints",
+    "Credential stuffing and brute-force activity targeted at admin surfaces from non-business geographies",
+    "Operational interface exposure beyond intended regions"
+  ],
+  "tags": [
+    "aws",
+    "waf",
+    "geo-restriction",
+    "admin",
+    "internal",
+    "hardening"
+  ],
+  "prerequisites": [
+    "AWS WAF v2 Web ACL attached to the protected resource (ALB, API Gateway, CloudFront, etc.)",
+    "Validated country allowlist aligned to business and operational access requirements",
+    "WAF logging enabled for rollout validation"
+  ],
+  "rules": [
+    {
+      "name": "geo-restrict-sensitive-paths",
+      "priority": 100,
+      "action": "COUNT",
+      "statement": {
+        "and_statement": {
+          "statements": [
+            {
+              "or_statement": {
+                "statements": [
+                  {
+                    "byte_match_statement": {
+                      "field_to_match": {
+                        "uri_path": {}
+                      },
+                      "positional_constraint": "STARTS_WITH",
+                      "search_string": "/admin",
+                      "text_transformations": [
+                        {
+                          "priority": 0,
+                          "type": "LOWERCASE"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "byte_match_statement": {
+                      "field_to_match": {
+                        "uri_path": {}
+                      },
+                      "positional_constraint": "STARTS_WITH",
+                      "search_string": "/internal",
+                      "text_transformations": [
+                        {
+                          "priority": 0,
+                          "type": "LOWERCASE"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "byte_match_statement": {
+                      "field_to_match": {
+                        "uri_path": {}
+                      },
+                      "positional_constraint": "STARTS_WITH",
+                      "search_string": "/ops",
+                      "text_transformations": [
+                        {
+                          "priority": 0,
+                          "type": "LOWERCASE"
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "not_statement": {
+                "statement": {
+                  "geo_match_statement": {
+                    "country_codes": [
+                      "US",
+                      "CA",
+                      "GB"
+                    ]
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "visibility_config": {
+        "sampled_requests_enabled": true,
+        "cloudwatch_metrics_enabled": true,
+        "metric_name": "geoRestrictSensitivePaths"
+      }
+    }
+  ],
+  "deployment_notes": [
+    "Staged rollout: deploy in COUNT mode first and review logs/metrics for at least 7-14 days before enforcing.",
+    "After validation, change action from COUNT to BLOCK for the same rule and continue monitoring blocked request volume.",
+    "If needed, begin with narrower path scope (/admin only) and expand to /internal and /ops once baseline behavior is understood.",
+    "Terraform usage snippet (minimal):",
+    "resource \"aws_wafv2_web_acl\" \"example\" {",
+    "  name  = \"app-acl\"",
+    "  scope = \"REGIONAL\"",
+    "",
+    "  default_action { allow {} }",
+    "",
+    "  rule {",
+    "    name     = \"geo-restrict-sensitive-paths\"",
+    "    priority = 100",
+    "",
+    "    action { count {} } # switch to block {} after validation",
+    "",
+    "    statement {",
+    "      and_statement {",
+    "        statement {",
+    "          or_statement {",
+    "            statement { byte_match_statement { search_string = \"/admin\" positional_constraint = \"STARTS_WITH\" field_to_match { uri_path {} } text_transformation { priority = 0 type = \"LOWERCASE\" } } }",
+    "            statement { byte_match_statement { search_string = \"/internal\" positional_constraint = \"STARTS_WITH\" field_to_match { uri_path {} } text_transformation { priority = 0 type = \"LOWERCASE\" } } }",
+    "            statement { byte_match_statement { search_string = \"/ops\" positional_constraint = \"STARTS_WITH\" field_to_match { uri_path {} } text_transformation { priority = 0 type = \"LOWERCASE\" } } }",
+    "          }",
+    "        }",
+    "        statement {",
+    "          not_statement {",
+    "            statement {",
+    "              geo_match_statement { country_codes = [\"US\", \"CA\", \"GB\"] }",
+    "            }",
+    "          }",
+    "        }",
+    "      }",
+    "    }",
+    "",
+    "    visibility_config {",
+    "      cloudwatch_metrics_enabled = true",
+    "      metric_name                = \"geoRestrictSensitivePaths\"",
+    "      sampled_requests_enabled   = true",
+    "    }",
+    "  }",
+    "",
+    "  visibility_config {",
+    "    cloudwatch_metrics_enabled = true",
+    "    metric_name                = \"appAcl\"",
+    "    sampled_requests_enabled   = true",
+    "  }",
+    "}"
+  ],
+  "tuning_notes": [
+    "Replace the sample allowlist (US, CA, GB) with your real business-country set.",
+    "Confirm URI normalization behavior in upstream components (e.g., ALB/CloudFront) and add additional patterns if encoded path variants are observed.",
+    "For machine/admin workflows traversing VPN or corporate proxies, verify apparent source geographies before enabling BLOCK.",
+    "Consider explicit allow rules for trusted admin IP sets when legitimate access may originate from non-allowlisted countries."
+  ],
+  "monitoring_guidance": [
+    "Track rule metric geoRestrictSensitivePaths in CloudWatch for request count/blocked trends.",
+    "Review sampled requests and WAF logs to identify legitimate traffic from unexpected countries before enforcement.",
+    "Alert on sudden spikes in non-allowlisted access attempts to sensitive paths as possible reconnaissance or abuse signals."
+  ],
+  "false_positive_considerations": [
+    "Traveling administrators may be blocked when outside allowlisted countries.",
+    "Third-party operations providers may originate from regions not yet allowlisted.",
+    "NAT/proxy egress geography may differ from expected user location."
+  ],
+  "references": [
+    "https://docs.aws.amazon.com/waf/latest/developerguide/waf-rule-statement-type-geo-match.html",
+    "https://docs.aws.amazon.com/waf/latest/developerguide/waf-rule-statement-type-byte-match.html",
+    "https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/wafv2_web_acl"
+  ]
+}
